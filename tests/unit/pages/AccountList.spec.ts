@@ -2386,7 +2386,7 @@ describe('AccountList page', () => {
     const wrapper = await ctx.mountIt()
     await flushPromises()
 
-    await wrapper.get('[data-test="account-list-start"]').trigger('click')
+    await wrapper.get('[data-test="game-account-card"] .game-account-card__start-btn').trigger('click')
     await flushPromises()
 
     /* OTP IPC not fired — direct branch skips it. */
@@ -2433,7 +2433,7 @@ describe('AccountList page', () => {
     const wrapper = await ctx.mountIt()
     await flushPromises()
 
-    await wrapper.get('[data-test="account-list-start"]').trigger('click')
+    await wrapper.get('[data-test="game-account-card"] .game-account-card__start-btn').trigger('click')
     await flushPromises()
 
     /* getOtp fired with the selected account snapshot. */
@@ -2478,7 +2478,7 @@ describe('AccountList page', () => {
     const wrapper = await ctx.mountIt()
     await flushPromises()
 
-    const startBtn = wrapper.get('[data-test="account-list-start"]')
+    const startBtn = wrapper.get('[data-test="game-account-card"] .game-account-card__start-btn')
     expect((startBtn.element as HTMLButtonElement).disabled).toBe(true)
     /*
      * No IPC is fired even though Pinia is in its initial state —

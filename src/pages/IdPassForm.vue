@@ -112,8 +112,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import { ElButton, ElCheckbox, ElForm, ElIcon, ElInput, ElMessage } from 'element-plus'
-import { Lock } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 
 import { useAccountStore } from '../stores/account'
 import { useAuthStore, AUTH_ACTIONS, type LoginIntent } from '../stores/auth'
@@ -184,6 +183,7 @@ const account = ref('')
 const password = ref('')
 const remember = ref(false)
 const autoLogin = ref(false)
+const showPassword = ref(false)
 
 /*
  * WPF coupling (`id-pass_form.xaml.cs` L29-37): toggling AutoLogin
@@ -500,13 +500,22 @@ async function persistAfterFullSuccess(intent: LoginIntent): Promise<void> {
 </script>
 
 <template>
-  <el-form class="id-pass-form" label-position="top" @submit.prevent="submit">
+  <form class="id-pass-form" @submit.prevent="submit">
+    <div class="id-pass-form__header">
+      <div class="id-pass-form__logo">
+        <span class="material-symbols-outlined">games</span>
+      </div>
+      <h1 class="id-pass-form__title">Beanfun</h1>
+      <p class="id-pass-form__subtitle">欢迎回来</p>
+    </div>
+
     <div class="id-pass-form__field">
       <label class="id-pass-form__label">{{ t('AcountOrEmail') }}</label>
       <div class="id-pass-form__account-wrap">
-        <el-input
+        <input
           v-model="account"
-          size="default"
+          class="id-pass-form__input"
+          type="text"
           autocomplete="username"
           :placeholder="t('AcountOrEmail')"
           @keydown="handleAccountKeydown"
@@ -527,6 +536,7 @@ async function persistAfterFullSuccess(intent: LoginIntent): Promise<void> {
             class="id-pass-form__dropdown-item"
             @mousedown.prevent="selectAccount(sa.account_id)"
           >
+            <span class="material-symbols-outlined">person</span>
             {{ sa.account_id }}
           </li>
         </ul>
@@ -535,24 +545,34 @@ async function persistAfterFullSuccess(intent: LoginIntent): Promise<void> {
 
     <div class="id-pass-form__field">
       <label class="id-pass-form__label">{{ t('Password_') }}</label>
-      <el-input
-        v-model="password"
-        type="password"
-        size="default"
-        autocomplete="current-password"
-        :placeholder="t('Password_')"
-        show-password
-      >
-        <template #prefix>
-          <el-icon><Lock /></el-icon>
-        </template>
-      </el-input>
+      <div class="id-pass-form__password-wrap">
+        <input
+          v-model="password"
+          class="id-pass-form__input"
+          :type="showPassword ? 'text' : 'password'"
+          autocomplete="current-password"
+          :placeholder="t('Password_')"
+        />
+        <button
+          type="button"
+          class="id-pass-form__toggle-btn"
+          @click="showPassword = !showPassword"
+        >
+          <span class="material-symbols-outlined">{{ showPassword ? 'visibility_off' : 'visibility' }}</span>
+        </button>
+      </div>
     </div>
 
     <div class="id-pass-form__options">
       <div class="id-pass-form__checkboxes">
-        <el-checkbox v-model="remember" :label="t('RememberPassword')" />
-        <el-checkbox v-model="autoLogin" :label="t('AutoLogin')" />
+        <label class="id-pass-form__checkbox">
+          <input type="checkbox" v-model="remember" />
+          <span>{{ t('RememberPassword') }}</span>
+        </label>
+        <label class="id-pass-form__checkbox">
+          <input type="checkbox" v-model="autoLogin" />
+          <span>{{ t('AutoLogin') }}</span>
+        </label>
       </div>
       <div class="id-pass-form__inline-links">
         <button
@@ -575,94 +595,164 @@ async function persistAfterFullSuccess(intent: LoginIntent): Promise<void> {
     </div>
 
     <div class="id-pass-form__actions">
-      <el-button
-        type="primary"
+      <button
+        type="submit"
         class="id-pass-form__submit"
-        native-type="submit"
-        :loading="submitting"
+        :disabled="submitting"
       >
         {{ t('Login') }}
-      </el-button>
-      <el-button
+      </button>
+      <button
+        type="button"
         class="id-pass-form__game-start"
         data-test="id-pass-game-start"
         @click="handleGameStart"
       >
         {{ t('GameStart') }}
-      </el-button>
+      </button>
+    </div>
+
+    <div class="id-pass-form__login-methods">
       <button
         v-if="currentRegion === 'TW'"
         type="button"
-        class="id-pass-form__icon-switch"
+        class="id-pass-form__login-method"
         :title="t('QRCodeLogin')"
         data-test="id-pass-switch-qr"
         @click="switchToQr"
       >
         <span class="material-symbols-outlined">qr_code_2</span>
+        <span>{{ t('QRCodeLogin') }}</span>
       </button>
       <button
         v-if="currentRegion === 'TW'"
         type="button"
-        class="id-pass-form__icon-switch"
+        class="id-pass-form__login-method"
         :title="t('GamePassLogin')"
         data-test="id-pass-switch-gamepass"
         @click="switchToGamepass"
       >
         <span class="material-symbols-outlined">passkey</span>
+        <span>{{ t('GamePassLogin') }}</span>
       </button>
     </div>
-  </el-form>
+  </form>
 </template>
 
 <style scoped>
 .id-pass-form {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1.5rem;
+  max-width: 320px;
+  margin: 0 auto;
+}
+
+.id-pass-form__header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.id-pass-form__logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #f3f4f6;
+  display: grid;
+  place-items: center;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
+.id-pass-form__logo .material-symbols-outlined {
+  font-size: 22px;
+}
+
+.id-pass-form__title {
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: #111827;
+  margin: 0;
+}
+
+.id-pass-form__subtitle {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin: 0;
+  font-weight: 400;
 }
 
 .id-pass-form__field {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.375rem;
 }
 
 .id-pass-form__label {
   font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--bf-on-surface, #221a11);
+  font-weight: 450;
+  color: #374151;
 }
 
-.id-pass-form__account-wrap {
+.id-pass-form__account-wrap,
+.id-pass-form__password-wrap {
   position: relative;
   width: 100%;
   display: flex;
 }
 
-.id-pass-form__account-wrap .el-input {
-  flex: 1;
+.id-pass-form__input {
+  width: 100%;
+  padding: 0.5625rem 0.875rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.9375rem;
+  background: #fff;
+  color: #111827;
+  outline: none;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
 }
 
-.id-pass-form__dropdown-btn {
+.id-pass-form__input:hover {
+  border-color: #d1d5db;
+}
+
+.id-pass-form__input:focus {
+  border-color: #6b7280;
+  box-shadow: 0 0 0 3px rgba(107, 114, 128, 0.1);
+}
+
+.id-pass-form__dropdown-btn,
+.id-pass-form__toggle-btn {
   position: absolute;
-  right: 1px;
-  top: 1px;
-  bottom: 1px;
-  width: 32px;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
   display: grid;
   place-items: center;
   background: transparent;
   border: none;
   cursor: pointer;
-  color: var(--bf-on-surface-variant, #54443a);
-  border-radius: 0 6px 6px 0;
+  color: #9ca3af;
+  border-radius: 6px;
   z-index: 1;
+  transition: background 100ms ease, color 100ms ease;
 }
-.id-pass-form__dropdown-btn .material-symbols-outlined {
-  font-size: 20px;
+
+.id-pass-form__dropdown-btn .material-symbols-outlined,
+.id-pass-form__toggle-btn .material-symbols-outlined {
+  font-size: 18px;
 }
-.id-pass-form__dropdown-btn:hover {
-  background: rgba(0, 0, 0, 0.04);
+
+.id-pass-form__dropdown-btn:hover,
+.id-pass-form__toggle-btn:hover {
+  background: #f3f4f6;
+  color: #4b5563;
 }
 
 .id-pass-form__dropdown {
@@ -671,100 +761,171 @@ async function persistAfterFullSuccess(intent: LoginIntent): Promise<void> {
   left: 0;
   right: 0;
   z-index: 100;
-  margin: 4px 0 0;
+  margin: 6px 0 0;
   padding: 4px 0;
   list-style: none;
   background: #fff;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 8px;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   max-height: 200px;
   overflow-y: auto;
 }
 
 .id-pass-form__dropdown-item {
   padding: 8px 12px;
-  font-size: 14px;
+  font-size: 0.875rem;
   cursor: pointer;
-  transition: background 100ms ease;
+  transition: background 120ms ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #111827;
+  font-weight: 400;
 }
+
+.id-pass-form__dropdown-item .material-symbols-outlined {
+  font-size: 16px;
+  color: #9ca3af;
+}
+
 .id-pass-form__dropdown-item:hover {
-  background: color-mix(in srgb, var(--bf-primary-container, #ff8201) 12%, transparent);
+  background: #f9fafb;
 }
 
 .id-pass-form__options {
   display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.5rem 1.25rem;
+  flex-direction: column;
+  gap: 0.625rem;
 }
 
 .id-pass-form__checkboxes {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 1.5rem;
+}
+
+.id-pass-form__checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+  color: #374151;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.id-pass-form__checkbox input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: #111827;
 }
 
 .id-pass-form__inline-links {
-  margin-left: auto;
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 1.25rem;
+  padding-top: 0.25rem;
 }
 
 .id-pass-form__inline-link {
-  padding: 0.25rem 0.5rem;
+  padding: 0.25rem 0;
   border: 0;
   background: transparent;
-  color: #a06a3a;
+  color: #6b7280;
   font-size: 0.8125rem;
-  font-weight: 600;
+  font-weight: 400;
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 0.15rem;
-  transition: color 0.15s ease;
+  transition: color 150ms ease;
 }
 
 .id-pass-form__inline-link:hover,
 .id-pass-form__inline-link:focus-visible {
-  color: #7a4a20;
+  color: #111827;
   outline: none;
 }
 
 .id-pass-form__actions {
   display: flex;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: 0.625rem;
   margin-top: 0.5rem;
-  align-items: stretch;
 }
 
 .id-pass-form__submit {
-  flex: 1;
-  font-weight: 700;
+  width: 100%;
+  font-weight: 500;
+  padding: 0.6875rem 1rem;
+  background: #111827;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9375rem;
+  cursor: pointer;
+  transition: background 150ms ease, opacity 150ms ease;
+}
+
+.id-pass-form__submit:hover:not(:disabled) {
+  background: #374151;
+}
+
+.id-pass-form__submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .id-pass-form__game-start {
-  flex: 1;
-  font-weight: 700;
+  width: 100%;
+  font-weight: 500;
+  padding: 0.6875rem 1rem;
+  background: #f3f4f6;
+  color: #111827;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.9375rem;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease;
 }
 
-.id-pass-form__icon-switch {
-  appearance: none;
-  background: rgba(255, 255, 255, 0.6);
-  border: 1px solid rgba(0, 0, 0, 0.08);
+.id-pass-form__game-start:hover {
+  background: #e5e7eb;
+  border-color: #d1d5db;
+}
+
+.id-pass-form__login-methods {
+  display: flex;
+  gap: 0.625rem;
+  margin-top: 0.5rem;
+}
+
+.id-pass-form__login-method {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0.625rem 0.5rem;
+  border: 1px solid #e5e7eb;
+  background: #fff;
   border-radius: 8px;
-  width: 40px;
-  display: grid;
-  place-items: center;
   cursor: pointer;
-  color: var(--bf-primary, #954a00);
-  transition: background 150ms ease;
-  flex-shrink: 0;
+  color: #4b5563;
+  font-size: 0.8125rem;
+  font-weight: 400;
+  transition: all 150ms ease;
 }
-.id-pass-form__icon-switch .material-symbols-outlined {
-  font-size: 22px;
+
+.id-pass-form__login-method:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
 }
-.id-pass-form__icon-switch:hover {
-  background: color-mix(in srgb, var(--bf-primary-container, #ff8201) 15%, transparent);
+
+.id-pass-form__login-method .material-symbols-outlined {
+  font-size: 18px;
+  color: #6b7280;
 }
 </style>

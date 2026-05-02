@@ -150,15 +150,30 @@ where
     F: FnMut(&str) -> Result<Vec<ProcessInfo>, ProcessError>,
 {
     let Some(exe_name) = game_path.file_name().and_then(|n| n.to_str()) else {
+        eprintln!("[find_game_processes] No exe name found in path: {:?}", game_path);
         return Ok(Vec::new());
     };
 
+    eprintln!("[find_game_processes] Looking for processes with exe name: {}", exe_name);
     let processes = find(exe_name)?;
+    eprintln!("[find_game_processes] Found {} processes with name {}", processes.len(), exe_name);
 
-    Ok(processes
+    let filtered: Vec<_> = processes
         .into_iter()
-        .filter(|info| matches_game_path(info, game_path))
-        .collect())
+        .filter(|info| {
+            let matches = matches_game_path(info, game_path);
+            eprintln!(
+                "[find_game_processes] Process {}: path={:?}, matches={}",
+                info.pid,
+                info.executable_path,
+                matches
+            );
+            matches
+        })
+        .collect();
+
+    eprintln!("[find_game_processes] Returning {} matching processes", filtered.len());
+    Ok(filtered)
 }
 
 /// Best-effort terminate every pid in `pids`, returning the subset
@@ -195,14 +210,40 @@ where
 /// Match predicate used by [`find_game_processes_with`].
 ///
 /// Pure, no IO — lifted out of the closure so it's independently
-/// unit-testable and so the equality rule (byte-equal path, `None`
-/// filtered out) lives in one place. Mirrors
-/// [`super::patcher`]'s private `matches_expected_path` helper.
+/// unit-testable and so the equality rule lives in one place.
+/// Mirrors [`super::patcher`]'s private `matches_expected_path` helper.
+///
+/// Note: First tries case-insensitive path comparison. If the path is
+/// not available (None), falls back to comparing exe names. This handles
+/// protected processes where WMI cannot retrieve the executable path.
 fn matches_game_path(info: &ProcessInfo, game_path: &Path) -> bool {
-    info.executable_path
-        .as_deref()
-        .map(|p| p == game_path)
-        .unwrap_or(false)
+    // First try: case-insensitive full path comparison
+    if let Some(ref path) = info.executable_path {
+        if let Some(p_str) = path.to_str() {
+            if let Some(g_str) = game_path.to_str() {
+                if p_str.eq_ignore_ascii_case(g_str) {
+                    return true;
+                }
+            }
+        }
+    }
+
+    // Fallback: compare exe names when path is not available
+    // This mirrors WPF's behavior when WMI returns null ExecutablePath
+    if info.executable_path.is_none() {
+        let game_exe = game_path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .map(|s| s.to_lowercase());
+        let info_exe = Some(info.name.to_lowercase());
+
+        if game_exe == info_exe {
+            eprintln!("[matches_game_path] Fallback match by name: {} == {}", info.name, game_path.display());
+            return true;
+        }
+    }
+
+    false
 }
 
 // ---------------------------------------------------------------------------

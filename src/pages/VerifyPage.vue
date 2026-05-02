@@ -82,8 +82,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import { ElButton, ElCheckbox, ElForm, ElFormItem, ElIcon, ElInput, ElMessage } from 'element-plus'
-import { ArrowLeft } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 
 import { useAccountStore } from '../stores/account'
 import { AUTH_ACTIONS, useAuthStore } from '../stores/auth'
@@ -288,7 +287,7 @@ function goBack(): void {
 </script>
 
 <template>
-  <el-form class="verify-page" label-position="top" @submit.prevent="submit">
+  <form class="verify-page" @submit.prevent="submit">
     <button
       type="button"
       class="verify-page__back"
@@ -296,7 +295,7 @@ function goBack(): void {
       data-test="verify-back"
       @click="goBack"
     >
-      <el-icon><ArrowLeft /></el-icon>
+      <span class="material-symbols-outlined">arrow_back</span>
       <span>{{ t('Back') }}</span>
     </button>
 
@@ -310,19 +309,24 @@ function goBack(): void {
       <span class="verify-page__auth-label">{{ lblAuthType }}</span>
     </p>
 
-    <el-form-item class="verify-page__item">
-      <el-input
+    <div class="verify-page__field">
+      <label class="verify-page__label">{{ t('AuthInfoNeed') }}</label>
+      <input
         v-model="verifyCode"
-        size="large"
+        class="verify-page__input"
+        type="text"
         :placeholder="t('AuthInfoNeed')"
         :disabled="loadFailed"
         autocomplete="one-time-code"
         data-test="verify-input"
       />
-    </el-form-item>
+    </div>
 
     <div class="verify-page__remember">
-      <el-checkbox v-model="remember" :label="t('Remember')" data-test="verify-remember" />
+      <label class="verify-page__checkbox">
+        <input type="checkbox" v-model="remember" data-test="verify-remember" />
+        <span>{{ t('Remember') }}</span>
+      </label>
     </div>
 
     <div class="verify-page__captcha">
@@ -346,119 +350,175 @@ function goBack(): void {
       </button>
     </div>
 
-    <el-form-item class="verify-page__item">
-      <el-input
+    <div class="verify-page__field">
+      <label class="verify-page__label">{{ t('CaptchaCodeNeed') }}</label>
+      <input
         v-model="captchaCode"
-        size="large"
+        class="verify-page__input"
+        type="text"
         :placeholder="t('CaptchaCodeNeed')"
         :disabled="loadFailed"
         autocomplete="off"
         data-test="verify-captcha-input"
       />
-    </el-form-item>
+    </div>
 
     <p v-if="loadFailed" class="verify-page__error" data-test="verify-load-failed">
       {{ t('LoadCaptchaFailed') }}
     </p>
 
-    <el-button
+    <button
       v-if="loadFailed"
+      type="button"
       class="verify-page__retry"
-      size="large"
+      :disabled="refreshing"
       data-test="verify-retry"
-      :loading="refreshing"
       @click="retryBootstrap"
     >
-      {{ t('RefreshCaptcha') }}
-    </el-button>
+      {{ refreshing ? t('Loading') : t('RefreshCaptcha') }}
+    </button>
 
-    <el-button
+    <button
       v-else
-      type="primary"
-      size="large"
+      type="submit"
       class="verify-page__submit"
-      native-type="submit"
+      :disabled="submitting"
       data-test="verify-submit"
-      :loading="submitting"
     >
-      {{ t('AuthConfirm') }}
-    </el-button>
-  </el-form>
+      {{ submitting ? t('Loading') : t('AuthConfirm') }}
+    </button>
+  </form>
 </template>
 
 <style scoped>
 .verify-page {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1rem;
+  max-width: 320px;
+  margin: 0 auto;
 }
 
 .verify-page__back {
   align-self: flex-start;
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
-  padding: 0.25rem 0.5rem;
-  margin: -0.25rem 0 0 -0.5rem;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
   border: 0;
   background: transparent;
-  color: #54443a;
+  color: #6b7280;
   font-size: 0.8125rem;
-  font-weight: 600;
+  font-weight: 400;
   cursor: pointer;
-  border-radius: 0.25rem;
-  transition:
-    background-color 0.15s ease,
-    color 0.15s ease;
+  border-radius: 6px;
+  transition: background-color 150ms ease, color 150ms ease;
 }
 
 .verify-page__back:hover,
 .verify-page__back:focus-visible {
-  background-color: rgba(84, 68, 58, 0.08);
-  color: #2c1d14;
+  background-color: #f3f4f6;
+  color: #374151;
   outline: none;
 }
 
 .verify-page__header {
-  text-align: center;
+  text-align: left;
 }
 
 .verify-page__title {
   margin: 0;
-  font-size: 1rem;
-  font-weight: 700;
-  color: #1f1a16;
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: #111827;
 }
 
 .verify-page__subtitle {
-  margin: 0.375rem 0 0;
-  font-size: 0.8125rem;
-  color: #54443a;
+  margin: 0.25rem 0 0;
+  font-size: 0.875rem;
+  color: #6b7280;
 }
 
 .verify-page__auth-type {
   margin: 0;
   padding: 0.625rem 0.875rem;
   border-radius: 8px;
-  background: color-mix(in srgb, var(--el-color-primary, #ff8201) 14%, transparent);
+  background: #eff6ff;
   font-size: 0.8125rem;
-  color: #1f1a16;
+  color: #111827;
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem 0.5rem;
 }
 
 .verify-page__auth-tip {
-  font-weight: 500;
-  color: #54443a;
+  font-weight: 450;
+  color: #374151;
 }
 
 .verify-page__auth-label {
-  font-weight: 700;
+  font-weight: 500;
+}
+
+.verify-page__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.verify-page__label {
+  font-size: 0.8125rem;
+  font-weight: 450;
+  color: #374151;
+}
+
+.verify-page__input {
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.9375rem;
+  background: #fff;
+  color: #111827;
+  outline: none;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.verify-page__input:hover:not(:disabled) {
+  border-color: #d1d5db;
+}
+
+.verify-page__input:focus {
+  border-color: #6b7280;
+  box-shadow: 0 0 0 3px rgba(107, 114, 128, 0.1);
+}
+
+.verify-page__input:disabled {
+  background: #f9fafb;
+  opacity: 0.65;
+  cursor: not-allowed;
 }
 
 .verify-page__remember {
   margin: -0.25rem 0;
+}
+
+.verify-page__checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+  color: #374151;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.verify-page__checkbox input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: #111827;
 }
 
 .verify-page__captcha {
@@ -469,18 +529,15 @@ function goBack(): void {
 .verify-page__captcha-image {
   display: block;
   padding: 0.25rem;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid #e5e7eb;
   background: #ffffff;
   border-radius: 8px;
   cursor: pointer;
-  transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
+  transition: border-color 150ms ease;
 }
 
 .verify-page__captcha-image:hover:not(:disabled) {
-  border-color: var(--el-color-primary, #ff8201);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border-color: #6b7280;
 }
 
 .verify-page__captcha-image:disabled {
@@ -513,16 +570,54 @@ function goBack(): void {
   margin: 0;
   padding: 0.625rem 0.875rem;
   border-radius: 8px;
-  background: color-mix(in srgb, var(--el-color-danger, #f56c6c) 14%, transparent);
-  color: var(--el-color-danger, #f56c6c);
+  background: #fef2f2;
+  color: #ef4444;
   font-size: 0.8125rem;
   text-align: center;
 }
 
-.verify-page__submit,
+.verify-page__submit {
+  width: 100%;
+  padding: 0.6875rem 1rem;
+  font-weight: 500;
+  font-size: 0.9375rem;
+  background: #111827;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 150ms ease, opacity 150ms ease;
+}
+
+.verify-page__submit:hover:not(:disabled) {
+  background: #374151;
+}
+
+.verify-page__submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .verify-page__retry {
   width: 100%;
-  font-weight: 700;
-  margin-top: 0.25rem;
+  padding: 0.6875rem 1rem;
+  font-weight: 500;
+  font-size: 0.9375rem;
+  background: #f3f4f6;
+  color: #111827;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.verify-page__retry:hover:not(:disabled) {
+  background: #e5e7eb;
+  border-color: #d1d5db;
+}
+
+.verify-page__retry:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 </style>

@@ -53,7 +53,7 @@ function handleOpenAbout(): void {
 </script>
 
 <template>
-  <section class="login-shell bf-glass-window" data-window-root>
+  <section class="login-shell" data-window-root>
     <TitleBar>
       <button
         v-if="!isRegionPage"
@@ -73,19 +73,12 @@ function handleOpenAbout(): void {
       </button>
     </TitleBar>
     <div class="login-shell__body">
-      <!--
-        Issue #236 (i18n follow-up): `data-window-content` lets the
-        router's ResizeObserver track the rendered child form's
-        natural height. `[data-window-root]` above is locked to
-        `100vh` so observing it alone never fires on a language
-        switch; the wrapper below grows/shrinks with the child form's
-        own content and is what actually changes when the i18n store
-        swaps strings. Keeping the wrapper as a pure flow container
-        (no flex sizing of its own) means the child form's existing
-        layout is unchanged.
-      -->
       <div class="login-shell__content" data-window-content>
-        <RouterView :key="currentRegion" />
+        <RouterView v-slot="{ Component }">
+          <Transition name="page" mode="out-in">
+            <component :is="Component" :key="currentRegion" />
+          </Transition>
+        </RouterView>
       </div>
     </div>
   </section>
@@ -115,7 +108,7 @@ function handleOpenAbout(): void {
   place-items: center;
   border-radius: 6px;
   cursor: pointer;
-  color: var(--bf-on-surface-variant, #54443a);
+  color: #666666;
   transition: background 150ms ease;
   padding: 0;
 }
@@ -123,13 +116,13 @@ function handleOpenAbout(): void {
   font-size: 18px;
 }
 .login-shell__action-btn:hover {
-  background: rgba(0, 0, 0, 0.06);
+  background: #f5f5f5;
 }
 
 .login-shell__region-btn {
   appearance: none;
-  background: color-mix(in srgb, var(--bf-primary-container, #ff8201) 15%, transparent);
-  border: 1px solid color-mix(in srgb, var(--bf-primary-container, #ff8201) 30%, transparent);
+  background: #f5f5f5;
+  border: 1px solid #e5e5e5;
   height: 26px;
   display: inline-flex;
   align-items: center;
@@ -137,16 +130,32 @@ function handleOpenAbout(): void {
   padding: 0 0.5rem 0 0.25rem;
   border-radius: 6px;
   cursor: pointer;
-  color: var(--bf-primary, #954a00);
+  color: #000000;
   font: inherit;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   transition: background 150ms ease;
 }
 .login-shell__region-icon {
   font-size: 14px;
 }
 .login-shell__region-btn:hover {
-  background: color-mix(in srgb, var(--bf-primary-container, #ff8201) 25%, transparent);
+  background: #efefef;
+}
+
+/* Page transition animations */
+.page-enter-active,
+.page-leave-active {
+  transition: opacity 200ms ease, transform 200ms ease;
+}
+
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.page-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
 }
 </style>

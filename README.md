@@ -12,6 +12,38 @@
 
 ---
 
+## 關於本 Fork
+
+本專案是從 [pungin/Beanfun](https://github.com/pungin/Beanfun) Fork 而來，並添加了以下改進功能：
+
+### 主要改進
+
+1. **多遊戲卡片列表展示**
+   - 以可展開的卡片形式展示所有遊戲
+   - 每個卡片包含完整的遊戲操作功能（帳號列表、OTP獲取、啟動遊戲）
+   - 大幅減少 OTP API 調用，防止帳號因異常行為被封
+
+2. **UI/UX 優化**
+   - 簡化單帳號遊戲的 UI 顯示，隱藏不必要的限制提示
+   - 優化頁面布局，提升視覺層次感
+   - 改進載入狀態顯示
+
+3. **互動體驗改進**
+   - 優化 2FA 輸入框的鍵盤導航（方向鍵、Home/End 支持）
+   - 添加 TOTP 倒計時同步顯示
+   - 改進自動 OTP 粘貼邏輯
+
+4. **OTP 安全機制**
+   - 前端防抖：3 秒內禁止重複點擊獲取 OTP
+   - 後端速率限制：單個帳號每分鐘最多 5 次 OTP 請求
+   - 延遲加載：只在用戶明確需要時才調用 OTP API
+
+詳細的改進記錄請參見 [CHANGELOG.md](./CHANGELOG.md)。
+
+功能規格文檔請參見 [spec/](./spec/) 目錄，AI 協作指南請參見 [AGENTS.md](./AGENTS.md)。
+
+---
+
 ## 下載與使用 (Getting Started)
 
 ### 系統要求 (Prerequisites)
@@ -56,6 +88,8 @@
 
 完整目錄樹與模組說明請見 **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**。
 
+專案設計文檔請見 **[.trae/documents](./.trae/documents)** 目錄。
+
 ---
 
 ## 開發 (Development)
@@ -98,3 +132,10 @@ cargo test
 1. 從 `code` 分支出新 feature branch。
 2. PR 到 `code` 時會跑 CI（lint / format / typecheck / test）。
 3. 送 PR 前請先跑 `npm run format` + `cargo fmt`。
+
+---
+
+## 致謝
+
+- 感謝 [pungin/Beanfun](https://github.com/pungin/Beanfun) 原作者的出色工作
+- 感謝 [Locale_Remulator](https://github.com/InWILL/Locale_Remulator) 項目提供的語言模擬功能

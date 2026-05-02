@@ -59,13 +59,14 @@
 import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import { ElButton, ElForm, ElInput } from 'element-plus'
 
 import { useAccountStore } from '../stores/account'
 import { AUTH_ACTIONS, useAuthStore } from '../stores/auth'
 import { useConfigStore } from '../stores/config'
 import { LOGIN_METHOD } from '../constants/login'
 import { useOtpInputs, type FocusableInput } from '../composables/useOtpInputs'
+import { useTotpCountdown } from '../composables/useTotpCountdown'
+import { ElMessage } from 'element-plus'
 
 defineOptions({ name: 'LoginTotp' })
 
@@ -88,6 +89,15 @@ const auth = useAuthStore()
 const accountStore = useAccountStore()
 const config = useConfigStore()
 
+// TOTP倒计时 - 与标准TOTP工具同步
+const countdown = useTotpCountdown({
+  warningThreshold: 5,
+  onReset: () => {
+    // 倒计时归零时提示用户验证码已更新
+    ElMessage.warning(t('loginTotp.codeRefreshed'))
+  },
+})
+
 const otp = useOtpInputs({
   length: TOTP_LENGTH,
   onComplete: (code) => {
@@ -105,14 +115,19 @@ const { cells, register, handleInput, handleKeydown, handlePaste, focusFirst, re
 const submitting = computed(() => auth.pendingAction === AUTH_ACTIONS.LoginTotp)
 
 /**
- * Vue template-ref callback. Receives the `ElInput` component instance
- * on mount and `null` on unmount; the composable tolerates either.
- * The `focus()` method is exposed by `ElInput` on its public API, so
- * a structural cast to {@link FocusableInput} is sufficient — we do
- * not depend on any other ElInput internals.
+ * Vue template-ref callback. Receives the HTML input element on mount
+ * and `null` on unmount.
  */
 function setCellRef(index: number, el: unknown): void {
   register(index, (el as FocusableInput | null) ?? null)
+}
+
+/**
+ * Handle input from a native HTMLInputElement, extract value and
+ * forward to the composable's handleInput.
+ */
+function handleNativeInput(index: number, input: HTMLInputElement): void {
+  handleInput(index, input.value)
 }
 
 /**
@@ -213,9 +228,9 @@ function goBack(): void {
 </script>
 
 <template>
-  <el-form class="login-totp" label-position="top" @submit.prevent="submit()">
+  <form class="login-totp" @submit.prevent="submit()">
     <div class="login-totp__icon-wrap">
-      <span class="material-symbols-outlined login-totp__icon">security</span>
+      <span class="material-symbols-outlined login-totp__icon">lock</span>
     </div>
 
     <header class="login-totp__header">
@@ -224,146 +239,196 @@ function goBack(): void {
     </header>
 
     <div class="login-totp__cells" role="group" :aria-label="t('loginTotp.title')">
-      <el-input
+      <input
         v-for="(cell, i) in cells"
         :key="i"
         :ref="(el) => setCellRef(i, el)"
         class="login-totp__cell"
-        size="large"
-        :model-value="cell"
+        :class="{ 'login-totp__cell--warning': countdown.isWarning.value }"
+        :value="cell"
         :maxlength="1"
         :data-test="`totp-cell-${i}`"
         inputmode="numeric"
         autocomplete="one-time-code"
-        @input="(value: string) => handleInput(i, value)"
+        @input="(event: Event) => handleNativeInput(i, (event as InputEvent).target as HTMLInputElement)"
         @keydown="(event: Event) => handleKeydown(i, event as KeyboardEvent)"
         @paste="(event: Event) => handlePaste(i, event as ClipboardEvent)"
         @focus="(event: Event) => selectOnFocus(event as FocusEvent)"
       />
     </div>
 
+    <div class="login-totp__countdown" :class="{ 'login-totp__countdown--warning': countdown.isWarning.value }">
+      {{ t('loginTotp.countdown', { seconds: countdown.secondsLeft.value }) }}
+    </div>
+
     <div class="login-totp__actions">
       <button type="button" class="login-totp__back-btn" data-test="totp-back" @click="goBack">
         {{ t('Back') }}
       </button>
-      <el-button
-        type="primary"
+      <button
+        type="submit"
         class="login-totp__submit"
-        native-type="submit"
         data-test="totp-submit"
-        :loading="submitting"
+        :disabled="submitting"
       >
         {{ t('Login') }}
-      </el-button>
+      </button>
     </div>
-  </el-form>
+  </form>
 </template>
 
 <style scoped>
 .login-totp {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  align-items: center;
+  gap: 1.5rem;
+  align-items: flex-start;
+  max-width: 320px;
+  margin: 0 auto;
 }
 
 .login-totp__icon-wrap {
-  width: 64px;
-  height: 64px;
-  border-radius: 16px;
-  background: linear-gradient(
-    135deg,
-    var(--bf-primary-container, #ff8201),
-    var(--bf-primary, #954a00)
-  );
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #f3f4f6;
   display: grid;
   place-items: center;
-  box-shadow: 0 8px 20px color-mix(in srgb, var(--bf-primary, #954a00) 35%, transparent);
+  margin-bottom: 0.25rem;
 }
 
 .login-totp__icon {
-  font-size: 32px;
-  color: var(--bf-on-primary, #fff);
+  font-size: 22px;
+  color: #374151;
 }
 
 .login-totp__header {
-  text-align: center;
+  text-align: left;
 }
 
 .login-totp__title {
   margin: 0;
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: var(--bf-on-surface, #1f1a16);
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: #111827;
 }
 
 .login-totp__subtitle {
-  margin: 0.375rem 0 0;
-  font-size: 0.8125rem;
-  color: var(--bf-on-surface-variant, #54443a);
+  margin: 0.25rem 0 0;
+  font-size: 0.875rem;
+  color: #6b7280;
 }
 
 .login-totp__cells {
   display: grid;
-  grid-template-columns: repeat(6, 52px);
-  gap: 0.5rem;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.625rem;
   justify-content: center;
-  margin: 0.5rem 0;
-}
-
-.login-totp__cell :deep(.el-input__wrapper) {
-  background: rgba(255, 255, 255, 0.6);
-  border-bottom: 2px solid var(--bf-outline, #85736a);
-  border-radius: 8px;
-  box-shadow: none;
-  height: 62px;
-  padding: 0;
-  transition: all 0.2s ease;
-}
-
-.login-totp__cell :deep(.el-input__wrapper:focus-within) {
-  border-bottom-color: var(--bf-primary-container, #ff8201);
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--bf-primary-container, #ff8201) 25%, transparent);
-}
-
-.login-totp__cell :deep(.el-input__inner) {
-  text-align: center;
-  font-size: 1.75rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  font-variant-numeric: tabular-nums;
-  padding: 0;
-  height: 100%;
-}
-
-.login-totp__actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
   width: 100%;
   margin-top: 0.5rem;
 }
 
+.login-totp__cell {
+  width: 100%;
+  height: 48px;
+  text-align: center;
+  font-size: 1.375rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  font-variant-numeric: tabular-nums;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  outline: none;
+  color: #111827;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+  /* 移除光标和选中反色 */
+  caret-color: transparent;
+  user-select: none;
+}
+
+.login-totp__cell:hover {
+  border-color: #d1d5db;
+}
+
+.login-totp__cell:focus {
+  border-color: #171717;
+  border-width: 2px;
+  box-shadow: none;
+}
+
+/* 移除选中时的反色背景 */
+.login-totp__cell::selection {
+  background: transparent;
+}
+
+.login-totp__cell::-moz-selection {
+  background: transparent;
+}
+
+.login-totp__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.login-totp__countdown {
+  width: 100%;
+  text-align: center;
+  font-size: 0.8125rem;
+  color: #6b7280;
+  margin-top: 0.25rem;
+  transition: color 150ms ease;
+}
+
+.login-totp__countdown--warning {
+  color: #ef4444;
+  font-weight: 500;
+}
+
+.login-totp__cell--warning {
+  border-color: #ef4444;
+}
+
 .login-totp__back-btn {
   appearance: none;
-  background: rgba(255, 255, 255, 0.6);
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
   border-radius: 8px;
-  padding: 10px 18px;
+  padding: 0.6875rem 1rem;
   font: inherit;
   font-weight: 500;
-  color: var(--bf-on-surface, #221a11);
+  color: #111827;
   cursor: pointer;
-  transition: background 150ms ease;
+  transition: background 150ms ease, border-color 150ms ease;
 }
 
 .login-totp__back-btn:hover {
-  background: rgba(255, 255, 255, 0.85);
+  background: #e5e7eb;
+  border-color: #d1d5db;
 }
 
 .login-totp__submit {
   width: 100%;
-  font-weight: 700;
+  font-weight: 500;
+  padding: 0.6875rem 1rem;
+  background: #111827;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9375rem;
+  cursor: pointer;
+  transition: background 150ms ease, opacity 150ms ease;
+}
+
+.login-totp__submit:hover:not(:disabled) {
+  background: #374151;
+}
+
+.login-totp__submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 </style>

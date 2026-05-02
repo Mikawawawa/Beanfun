@@ -108,9 +108,10 @@ export const useConfigStore = defineStore('config', () => {
       )
     }
     if (value === null) {
-      delete entries.value[key]
+      const { [key]: _, ...rest } = entries.value
+      entries.value = rest
     } else {
-      entries.value[key] = value
+      entries.value = { ...entries.value, [key]: value }
     }
   }
 

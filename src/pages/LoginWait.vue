@@ -113,8 +113,8 @@ function cancel(): void {
   background: conic-gradient(
     from 0deg,
     transparent 0%,
-    color-mix(in srgb, var(--el-color-primary, #ff8201) 60%, transparent) 35%,
-    var(--el-color-primary, #ff8201) 100%
+    rgba(0, 0, 0, 0.6) 35%,
+    #000000 100%
   );
   mask: radial-gradient(circle 28px at center, transparent 99%, #000 100%);
   -webkit-mask: radial-gradient(circle 28px at center, transparent 99%, #000 100%);

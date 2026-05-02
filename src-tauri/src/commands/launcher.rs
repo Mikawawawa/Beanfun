@@ -894,6 +894,39 @@ pub async fn auto_paste(req: AutoPasteRequest) -> Result<(), CommandError> {
     }
 }
 
+/// Open a file dialog for the user to select the game executable.
+///
+/// # Contract
+///
+/// Uses Tauri v2's dialog plugin. Returns the selected path or `None`
+/// if the user cancelled the dialog.
+///
+/// # Platform
+///
+/// Cross-platform — the dialog is handled by the OS native file picker.
+///
+/// # Errors
+///
+/// - `launcher.dialog_failed` — the dialog could not be opened.
+#[tauri::command]
+#[specta::specta]
+pub async fn select_game_executable<R: tauri::Runtime>(
+    app_handle: tauri::AppHandle<R>,
+) -> Result<Option<String>, CommandError> {
+    use tauri_plugin_dialog::DialogExt;
+    
+    let file_path = app_handle
+        .dialog()
+        .file()
+        .add_filter("Executable", &["exe"])
+        .blocking_pick_file();
+    
+    match file_path {
+        Some(path) => Ok(Some(path.to_string())),
+        None => Ok(None),
+    }
+}
+
 // =====================================================================
 // Windows-only registry lookup for detect_game_path
 // =====================================================================

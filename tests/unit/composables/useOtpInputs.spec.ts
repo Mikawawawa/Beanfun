@@ -143,10 +143,11 @@ describe('useOtpInputs — handleKeydown (Backspace)', () => {
     inputs.forEach((d) => expect(d.focusCount()).toBe(0))
   })
 
-  it('ignores non-Backspace keys', () => {
+  it('ignores unhandled keys', () => {
     const otp = useOtpInputs({ length: 6 })
     const inputs = registerAll(otp, 6)
-    const event = { key: 'ArrowLeft', preventDefault: vi.fn() } as unknown as KeyboardEvent
+    // Use a key that's not handled (e.g., 'a')
+    const event = { key: 'a', preventDefault: vi.fn() } as unknown as KeyboardEvent
     otp.handleKeydown(3, event)
     expect(event.preventDefault).not.toHaveBeenCalled()
     inputs.forEach((d) => expect(d.focusCount()).toBe(0))

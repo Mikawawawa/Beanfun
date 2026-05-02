@@ -84,8 +84,9 @@
  */
 
 import { useI18n } from 'vue-i18n'
-import { ElButton, ElDialog, ElIcon, ElMessage, ElMessageBox } from 'element-plus'
+import { ElDialog, ElIcon, ElMessage, ElMessageBox } from 'element-plus'
 import {
+  ArrowRight,
   CircleClose,
   Delete,
   Document,
@@ -310,67 +311,115 @@ function handleVisibleChange(value: boolean): void {
     </template>
 
     <div class="maple-tools__body">
-      <el-button
-        class="maple-tools__button bf-btn-secondary"
-        data-test="maple-tools-recycling"
-        @click="handleRecycling"
-      >
-        <el-icon><Delete /></el-icon>
-        <span>{{ t('Recycling') }}</span>
-      </el-button>
-      <el-button
-        class="maple-tools__button bf-btn-secondary"
-        data-test="maple-tools-player-report"
-        @click="handlePlayerReport"
-      >
-        <el-icon><Document /></el-icon>
-        <span>{{ t('PlayerReport') }}</span>
-      </el-button>
-      <el-button
-        class="maple-tools__button bf-btn-secondary"
-        data-test="maple-tools-video-report"
-        @click="handleVideoReport"
-      >
-        <el-icon><VideoCamera /></el-icon>
-        <span>{{ t('VideoReport') }}</span>
-      </el-button>
-      <el-button
-        class="maple-tools__button bf-btn-secondary"
-        data-test="maple-tools-equip-calculator"
-        @click="handleEquipCalculator"
-      >
-        <el-icon><Pointer /></el-icon>
-        <span>{{ t('EquipStarForceCaculator') }}</span>
-      </el-button>
-      <el-button
-        class="maple-tools__button bf-btn-secondary"
-        data-test="maple-tools-core-calculator"
-        @click="handleCoreCalculator"
-      >
-        <el-icon><Pointer /></el-icon>
-        <span>{{ t('PerfectCoreCaculator') }}</span>
-      </el-button>
+      <div class="maple-tools__list">
+        <button
+          class="maple-tools__item"
+          data-test="maple-tools-recycling"
+          @click="handleRecycling"
+        >
+          <div class="maple-tools__item-icon maple-tools__item-icon--danger">
+            <el-icon><Delete /></el-icon>
+          </div>
+          <div class="maple-tools__item-content">
+            <span class="maple-tools__item-title">{{ t('Recycling') }}</span>
+            <span class="maple-tools__item-desc">{{ t('mapleTools.recyclingDesc') }}</span>
+          </div>
+          <el-icon class="maple-tools__item-arrow"><ArrowRight /></el-icon>
+        </button>
+
+        <button
+          class="maple-tools__item"
+          data-test="maple-tools-player-report"
+          @click="handlePlayerReport"
+        >
+          <div class="maple-tools__item-icon maple-tools__item-icon--primary">
+            <el-icon><Document /></el-icon>
+          </div>
+          <div class="maple-tools__item-content">
+            <span class="maple-tools__item-title">{{ t('PlayerReport') }}</span>
+            <span class="maple-tools__item-desc">{{ t('mapleTools.playerReportDesc') }}</span>
+          </div>
+          <el-icon class="maple-tools__item-arrow"><ArrowRight /></el-icon>
+        </button>
+
+        <button
+          class="maple-tools__item"
+          data-test="maple-tools-video-report"
+          @click="handleVideoReport"
+        >
+          <div class="maple-tools__item-icon maple-tools__item-icon--purple">
+            <el-icon><VideoCamera /></el-icon>
+          </div>
+          <div class="maple-tools__item-content">
+            <span class="maple-tools__item-title">{{ t('VideoReport') }}</span>
+            <span class="maple-tools__item-desc">{{ t('mapleTools.videoReportDesc') }}</span>
+          </div>
+          <el-icon class="maple-tools__item-arrow"><ArrowRight /></el-icon>
+        </button>
+
+        <div class="maple-tools__divider" />
+
+        <button
+          class="maple-tools__item"
+          data-test="maple-tools-equip-calculator"
+          @click="handleEquipCalculator"
+        >
+          <div class="maple-tools__item-icon maple-tools__item-icon--success">
+            <el-icon><Pointer /></el-icon>
+          </div>
+          <div class="maple-tools__item-content">
+            <span class="maple-tools__item-title">{{ t('EquipStarForceCaculator') }}</span>
+            <span class="maple-tools__item-desc">{{ t('mapleTools.equipCalcDesc') }}</span>
+          </div>
+          <el-icon class="maple-tools__item-arrow"><ArrowRight /></el-icon>
+        </button>
+
+        <button
+          class="maple-tools__item"
+          data-test="maple-tools-core-calculator"
+          @click="handleCoreCalculator"
+        >
+          <div class="maple-tools__item-icon maple-tools__item-icon--warning">
+            <el-icon><Pointer /></el-icon>
+          </div>
+          <div class="maple-tools__item-content">
+            <span class="maple-tools__item-title">{{ t('PerfectCoreCaculator') }}</span>
+            <span class="maple-tools__item-desc">{{ t('mapleTools.coreCalcDesc') }}</span>
+          </div>
+          <el-icon class="maple-tools__item-arrow"><ArrowRight /></el-icon>
+        </button>
+      </div>
     </div>
   </el-dialog>
 </template>
 
 <style scoped>
+/* Vercel Design System */
 .maple-tools__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #eaeaea;
 }
 
 .maple-tools__header-meta {
   display: inline-flex;
   align-items: center;
-  gap: 0.625rem;
+  gap: 0.75rem;
   min-width: 0;
 }
 
 .maple-tools__header-icon {
-  color: var(--bf-primary);
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: #000;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
 }
 
@@ -378,20 +427,22 @@ function handleVisibleChange(value: boolean): void {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  gap: 0.125rem;
 }
 
 .maple-tools__header-title {
   font-size: 0.9375rem;
-  font-weight: 700;
-  color: var(--bf-on-surface);
+  font-weight: 600;
+  color: #000;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  letter-spacing: -0.01em;
 }
 
 .maple-tools__header-subtitle {
-  font-size: 0.75rem;
-  color: var(--bf-on-surface-variant);
+  font-size: 0.8125rem;
+  color: #666;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -401,41 +452,117 @@ function handleVisibleChange(value: boolean): void {
   appearance: none;
   border: 0;
   background: transparent;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   display: grid;
   place-items: center;
-  border-radius: var(--bf-radius-input);
-  color: var(--bf-on-surface-variant);
+  border-radius: 6px;
+  color: #666;
   cursor: pointer;
-  transition:
-    background var(--bf-motion-fast),
-    color var(--bf-motion-fast);
+  transition: all 150ms ease;
 }
 
 .maple-tools__header-close:hover {
-  background: color-mix(in srgb, var(--bf-danger) 80%, transparent);
-  color: var(--bf-on-danger);
+  background: #f5f5f5;
+  color: #000;
 }
 
 .maple-tools__body {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.5rem 0.25rem;
+  padding: 1rem 0 0.5rem;
 }
 
-/*
- * Each tool button stretches the dialog width and keeps the
- * icon + label inline. Element Plus's default `el-button` would
- * shrink to content; the override mirrors WPF's
- * `<Button Margin="5"/>` inside a `StackPanel` (each child
- * fills the panel width).
- */
-.maple-tools__button {
+.maple-tools__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.maple-tools__item {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: all 150ms ease;
+  text-align: left;
   width: 100%;
-  justify-content: flex-start;
-  gap: 0.5rem;
+}
+
+.maple-tools__item:hover {
+  background: #fafafa;
+}
+
+.maple-tools__item-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.maple-tools__item-icon--danger {
+  background: #fef2f2;
+  color: #ef4444;
+}
+
+.maple-tools__item-icon--primary {
+  background: #eff6ff;
+  color: #3b82f6;
+}
+
+.maple-tools__item-icon--purple {
+  background: #f3e8ff;
+  color: #a855f7;
+}
+
+.maple-tools__item-icon--success {
+  background: #f0fdf4;
+  color: #22c55e;
+}
+
+.maple-tools__item-icon--warning {
+  background: #fffbeb;
+  color: #f59e0b;
+}
+
+.maple-tools__item-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.maple-tools__item-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #111827;
+}
+
+.maple-tools__item-desc {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.maple-tools__item-arrow {
+  color: #d1d5db;
+  font-size: 0.875rem;
+  transition: color 150ms ease;
+}
+
+.maple-tools__item:hover .maple-tools__item-arrow {
+  color: #9ca3af;
+}
+
+.maple-tools__divider {
+  height: 1px;
+  background: #f3f4f6;
+  margin: 0.5rem 0;
 }
 </style>
 

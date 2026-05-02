@@ -259,17 +259,26 @@ function handleVisibleChange(value: boolean): void {
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #eaeaea;
 }
 
 .kart-tools__header-meta {
   display: inline-flex;
   align-items: center;
-  gap: 0.625rem;
+  gap: 0.75rem;
   min-width: 0;
 }
 
 .kart-tools__header-icon {
-  color: var(--bf-primary);
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: #000;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
 }
 
@@ -277,20 +286,22 @@ function handleVisibleChange(value: boolean): void {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  gap: 0.125rem;
 }
 
 .kart-tools__header-title {
   font-size: 0.9375rem;
-  font-weight: 700;
-  color: var(--bf-on-surface);
+  font-weight: 600;
+  color: #000;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  letter-spacing: -0.01em;
 }
 
 .kart-tools__header-subtitle {
-  font-size: 0.75rem;
-  color: var(--bf-on-surface-variant);
+  font-size: 0.8125rem;
+  color: #666;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -300,56 +311,49 @@ function handleVisibleChange(value: boolean): void {
   appearance: none;
   border: 0;
   background: transparent;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   display: grid;
   place-items: center;
-  border-radius: var(--bf-radius-input);
-  color: var(--bf-on-surface-variant);
+  border-radius: 6px;
+  color: #666;
   cursor: pointer;
-  transition:
-    background var(--bf-motion-fast),
-    color var(--bf-motion-fast);
+  transition: all 150ms ease;
 }
 
 .kart-tools__header-close:hover {
-  background: color-mix(in srgb, var(--bf-danger) 80%, transparent);
-  color: var(--bf-on-danger);
+  background: #f5f5f5;
+  color: #000;
 }
 
 .kart-tools__body {
   display: flex;
   flex-direction: column;
-  gap: 0.625rem;
-  padding: 0.5rem 0.25rem;
+  gap: 0.75rem;
+  padding: 1rem 0 0.5rem;
 }
 
 .kart-tools__section-header {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.625rem;
 }
 
 .kart-tools__section-label {
   font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--bf-on-surface-variant);
+  font-weight: 500;
+  color: #666;
   flex-shrink: 0;
 }
 
 .kart-tools__section-rule {
   flex: 1;
   height: 1px;
-  background: color-mix(in srgb, var(--bf-outline-variant) 50%, transparent);
+  background: #eaeaea;
 }
 
 /*
- * WPF DockPanel + 3 StackPanels = 3 columns, 2 rows, each
- * column flows top-to-bottom. `grid-auto-flow: column` makes
- * the row-major source array render in WPF's visual order
- * without re-ordering the keyed `v-for` items (which would
- * thrash the diff and break test selectors that key off the
- * same source order).
+ * Vercel-style grid layout
  */
 .kart-tools__grid {
   display: grid;
@@ -363,5 +367,22 @@ function handleVisibleChange(value: boolean): void {
   width: 100%;
   justify-content: flex-start;
   gap: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid #eaeaea;
+  background: #fafafa;
+  color: #000;
+  font-size: 0.8125rem;
+  font-weight: 400;
+  transition: all 150ms ease;
+}
+
+.kart-tools__button:hover {
+  border-color: #000;
+  background: #fff;
+}
+
+.kart-tools__button:active {
+  background: #f5f5f5;
 }
 </style>

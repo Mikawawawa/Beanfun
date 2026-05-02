@@ -599,7 +599,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <main class="settings bf-glass-window" data-window-root>
+  <main class="settings" data-window-root>
     <TitleBar />
     <div class="settings__scroll">
       <div class="settings__container" data-window-content>
@@ -609,13 +609,13 @@ onMounted(() => {
             <el-icon :size="24"><SettingIcon /></el-icon>
           </div>
           <div class="settings__header-text">
-            <h1 class="settings__title bf-text-gradient">{{ t('Settings') }}</h1>
+            <h1 class="settings__title">{{ t('Settings') }}</h1>
             <p class="settings__subline">{{ t('settings.subtitle') }}</p>
           </div>
         </header>
 
         <!-- App section -->
-        <section class="settings__section bf-glass-panel" data-test="settings-app-section">
+        <section class="settings__section" data-test="settings-app-section">
           <header class="settings__section-header">
             <el-icon><User /></el-icon>
             <span>{{ t('AppName') }}</span>
@@ -671,12 +671,6 @@ onMounted(() => {
               <div class="settings__row">
                 <label class="settings__label">{{ t('ThemeColor') }}</label>
                 <div class="settings__theme-row">
-                  <el-input
-                    :model-value="ui.themeColor"
-                    class="settings__theme-input"
-                    data-test="settings-theme-input"
-                    @change="handleThemeColorChange"
-                  />
                   <el-color-picker
                     :model-value="ui.themeColor"
                     data-test="settings-theme-picker"
@@ -771,7 +765,7 @@ onMounted(() => {
         <!-- Game section (D5) — only when a game is selected (WPF parity: if no game, t_GamePath is empty + the section is uninteractive). -->
         <section
           v-if="game.selectedGame"
-          class="settings__section bf-glass-panel"
+          class="settings__section"
           data-test="settings-game-section"
         >
           <header class="settings__section-header">
@@ -874,7 +868,7 @@ onMounted(() => {
         <!-- Game section empty banner (no selected game) — informational, mirrors WPF's empty t_GamePath fallback semantically. -->
         <section
           v-else
-          class="settings__section bf-glass-panel settings__section--empty"
+          class="settings__section settings__section--empty"
           data-test="settings-game-section-empty"
         >
           <el-icon class="settings__empty-icon" :size="20"><InfoFilled /></el-icon>
@@ -936,19 +930,14 @@ onMounted(() => {
 }
 
 .settings__header-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--bf-radius-button);
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--bf-primary-container) 30%, transparent),
-    color-mix(in srgb, var(--bf-primary) 25%, transparent)
-  );
-  color: var(--bf-on-primary);
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #f3f4f6;
+  color: #374151;
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  box-shadow: var(--bf-shadow-card);
 }
 
 .settings__header-text {
@@ -957,16 +946,17 @@ onMounted(() => {
 
 .settings__title {
   margin: 0;
-  font-size: 1.625rem;
-  font-weight: 800;
+  font-size: 1.375rem;
+  font-weight: 500;
   letter-spacing: -0.01em;
   line-height: 1.15;
+  color: #171717;
 }
 
 .settings__subline {
   margin: 0.25rem 0 0;
-  font-size: 0.8125rem;
-  color: var(--bf-on-surface-variant);
+  font-size: 0.875rem;
+  color: #6b7280;
 }
 
 /* --------------- section --------------- */
@@ -976,6 +966,9 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
 }
 
 .settings__section-header {
@@ -983,10 +976,10 @@ onMounted(() => {
   align-items: center;
   gap: 0.5rem;
   font-size: 0.875rem;
-  font-weight: 700;
-  color: var(--bf-on-surface-variant);
+  font-weight: 500;
+  color: #6b7280;
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid color-mix(in srgb, var(--bf-outline-variant) 25%, transparent);
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .settings__section--empty {
@@ -994,17 +987,18 @@ onMounted(() => {
   align-items: center;
   gap: 0.625rem;
   padding: 0.875rem 1rem;
+  background: #f9fafb;
 }
 
 .settings__empty-icon {
   flex-shrink: 0;
-  color: var(--bf-on-surface-variant);
+  color: #9ca3af;
 }
 
 .settings__empty-text {
   margin: 0;
   font-size: 0.8125rem;
-  color: var(--bf-on-surface-variant);
+  color: #6b7280;
 }
 
 /* --------------- grid / row --------------- */
@@ -1047,7 +1041,8 @@ onMounted(() => {
 
 .settings__label {
   font-size: 0.8125rem;
-  color: var(--bf-on-surface-variant);
+  color: #374151;
+  font-weight: 450;
 }
 
 .settings__select,
@@ -1075,7 +1070,7 @@ onMounted(() => {
 }
 
 .settings__game-path-icon {
-  color: var(--bf-on-surface-variant);
+  color: #9ca3af;
 }
 
 /* --------------- footer --------------- */

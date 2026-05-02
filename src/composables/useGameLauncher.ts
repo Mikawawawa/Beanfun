@@ -138,6 +138,33 @@ export function useGameLauncher(): UseGameLauncherReturn {
   }
 
   /**
+   * Parse the INI `exe` field into command-line template.
+   *
+   * Mirrors WPF `MainWindow.xaml.cs` L536-545:
+   * - `exe` field format: `"C:\Games\MapleStory\MapleStory.exe" /u:%s /p:%s`
+   * - Extract the part after `.exe` as the command-line template
+   *
+   * Returns the command-line template (e.g., `/u:%s /p:%s`) or empty string
+   * if no arguments are present.
+   */
+  function parseCommandLineTemplate(exe: string): string {
+    if (!exe) return ''
+
+    // Find the position of `.exe` (case-insensitive)
+    const exeIndex = exe.toLowerCase().indexOf('.exe')
+    if (exeIndex === -1) return ''
+
+    // Extract everything after `.exe`
+    const afterExe = exe.slice(exeIndex + 4)
+
+    // Trim leading whitespace and quotes
+    const template = afterExe.trim().replace(/^["\s]+/, '')
+
+    console.log('[useGameLauncher] Parsed command line template:', template)
+    return template
+  }
+
+  /**
    * Resolve the install path for the active game's executable.
    *
    * Mirrors WPF L1727-1751:
@@ -251,22 +278,20 @@ export function useGameLauncher(): UseGameLauncherReturn {
 
   /**
    * Already-running-process check + optional kill prompt.
-   * Mirrors WPF L1765-1833:
+   *
    * 1. Enumerate processes whose `executable_path` matches the
    *    target `gamePath` (backend `list_game_processes`
    *    encapsulates the WPF process-name regex + WMI filter).
    * 2. If any match, prompt `MsgGameAlreadyRun` Yes/No.
    *    - Yes → `kill_game_processes(pids)` and continue.
-   *    - No  → continue without killing (WPF launches anyway,
-   *      treating the prompt as advisory).
+   *    - No  → abort launch (user wants to keep existing game running).
    *
-   * Returns `true` to proceed with the launch, `false` to abort
-   * (currently never returns `false` — kept as the return shape
-   * for forward-compat with any future "abort on cancel" branch
-   * a Settings toggle might add).
+   * Returns `true` to proceed with the launch, `false` to abort.
    */
   async function checkAndKillRunningGameProcesses(gamePath: string): Promise<boolean> {
+    console.log('[useGameLauncher] Checking for running game processes:', gamePath)
     const listResult = await safeInvoke(commands.listGameProcesses(gamePath))
+    console.log('[useGameLauncher] listGameProcesses result:', listResult)
     if (!listResult.ok) {
       /*
        * Process enumeration failed (rare — usually a WMI
@@ -277,6 +302,7 @@ export function useGameLauncher(): UseGameLauncherReturn {
       console.warn('[useGameLauncher] listGameProcesses failed:', listResult.error)
       return true
     }
+    console.log('[useGameLauncher] Found', listResult.data.length, 'running game processes')
     if (listResult.data.length === 0) return true
 
     let confirmed: boolean
@@ -288,21 +314,19 @@ export function useGameLauncher(): UseGameLauncherReturn {
       })
       confirmed = true
     } catch (cancelOrNo) {
-      /*
-       * Mirrors WPF: only the explicit Yes branch kills processes.
-       * `cancel` (No) and `close` (Esc / X) both fall through to
-       * "launch anyway" — WPF doesn't gate the launch on the kill
-       * prompt either.
-       */
-      void cancelOrNo
       confirmed = false
     }
 
     if (confirmed) {
+      // User chose "Yes": kill existing processes and continue
       const pids = listResult.data.map((p) => p.pid)
       await safeInvoke(commands.killGameProcesses(pids))
+      return true
+    } else {
+      // User chose "No": abort launch, keep existing game running
+      console.log('[useGameLauncher] User cancelled launch to keep existing game running')
+      return false
     }
-    return true
   }
 
   async function runGame(accountId = '', password = ''): Promise<void> {
@@ -351,7 +375,18 @@ export function useGameLauncher(): UseGameLauncherReturn {
 
     const mode = resolveStartMode()
 
-    await wrapCommand(commands.launchGame(gamePath, mode, ini.exe, accountId, password))
+    // Parse command line template from INI exe field (mirrors WPF L536-545)
+    const commandLineTemplate = parseCommandLineTemplate(ini.exe)
+
+    console.log('[useGameLauncher] Launching game:', {
+      gamePath,
+      mode,
+      commandLineTemplate,
+      accountId,
+      hasPassword: !!password,
+    })
+
+    await wrapCommand(commands.launchGame(gamePath, mode, commandLineTemplate, accountId, password))
   }
 
   return { runGame }

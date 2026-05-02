@@ -289,6 +289,15 @@ pub fn build_specta_builder<R: tauri::Runtime>() -> Builder<R> {
         launcher::kill_game_processes,
         // launcher (P10.3 — D5d auto-paste)
         launcher::auto_paste,
+        // launcher (game card full — select executable)
+        //
+        // Generic over `R: tauri::Runtime` because it takes an
+        // `AppHandle<R>` (to use the dialog plugin). The specta
+        // turbofish pins to `tauri::Wry` while the tauri side
+        // monomorphises against the runtime — see the
+        // `auth::login_gamepass_start` comment above for the full
+        // E0401 / runtime-agnostic bindings rationale.
+        launcher::select_game_executable::<tauri::Wry>,
         // game (P12.3 D2 — list_games)
         game::list_games,
         // maple_cache (P12.5 D1 — Recycling button on MapleTools)

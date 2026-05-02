@@ -97,9 +97,17 @@ export interface UseOtpInputs {
    */
   handleInput(index: number, rawValue: string): void
   /**
-   * Intercept keyboard events for cell `index`. Only `Backspace`
-   * on an already-empty cell is handled (focus the previous cell);
-   * every other key is left to the native input. The composable
+   * Intercept keyboard events for cell `index`.
+   *
+   * Handled keys:
+   * - `Backspace` on empty cell → focus previous cell
+   * - `ArrowLeft` → focus previous cell
+   * - `ArrowRight` → focus next cell
+   * - `Home` → focus first cell
+   * - `End` → focus last cell
+   * - `Delete` → clear current cell, focus next cell (if not last)
+   *
+   * Every other key is left to the native input. The composable
    * does not `preventDefault` on digit keys — that's the filter's
    * job in {@link handleInput}.
    */
@@ -175,9 +183,49 @@ export function useOtpInputs(options: UseOtpInputsOptions): UseOtpInputs {
 
   function handleKeydown(index: number, event: KeyboardEvent): void {
     if (index < 0 || index >= length) return
-    if (event.key === 'Backspace' && cells.value[index] === '' && index > 0) {
-      event.preventDefault()
-      focus(index - 1)
+
+    switch (event.key) {
+      case 'Backspace':
+        if (cells.value[index] === '' && index > 0) {
+          event.preventDefault()
+          focus(index - 1)
+        }
+        break
+
+      case 'ArrowLeft':
+        if (index > 0) {
+          event.preventDefault()
+          focus(index - 1)
+        }
+        break
+
+      case 'ArrowRight':
+        if (index < length - 1) {
+          event.preventDefault()
+          focus(index + 1)
+        }
+        break
+
+      case 'Home':
+        event.preventDefault()
+        focusFirst()
+        break
+
+      case 'End':
+        event.preventDefault()
+        focus(length - 1)
+        break
+
+      case 'Delete':
+        if (cells.value[index] !== '') {
+          event.preventDefault()
+          cells.value[index] = ''
+          // 如果不是最后一个，聚焦到下一个
+          if (index < length - 1) {
+            focus(index + 1)
+          }
+        }
+        break
     }
   }
 

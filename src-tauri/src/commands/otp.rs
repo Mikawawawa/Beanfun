@@ -23,15 +23,59 @@
 //! policy — locked on the backend so the frontend cannot drift the
 //! two halves against each other).
 //!
+//! # Rate limiting
+//!
+//! To prevent users from being flagged for suspicious activity by
+//! Beanfun's servers, we enforce a per-account rate limit on OTP
+//! requests. The limit is 5 requests per minute per account.
+//!
 //! [svc]: crate::services::beanfun::get_otp
 //! [req]: crate::commands::session::require_auth
 //! [sesh]: crate::services::beanfun::Session
 //! [`commands::account::add_service_account`]: crate::commands::account::add_service_account
 
+use std::collections::HashMap;
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
+
 use tauri::State;
 
 use crate::commands::{error::CommandError, session::require_auth, state::AppState};
 use crate::services::beanfun::{get_otp as service_get_otp, ServiceAccount};
+
+/// Rate limiter for OTP requests per account.
+/// Key: account.sid, Value: list of request timestamps
+static OTP_RATE_LIMITER: Mutex<Option<HashMap<String, Vec<Instant>>>> = Mutex::new(None);
+
+/// Maximum OTP requests per minute per account
+const OTP_RATE_LIMIT: usize = 5;
+
+/// Time window for rate limiting
+const OTP_RATE_WINDOW: Duration = Duration::from_secs(60);
+
+/// Check if the account has exceeded the OTP rate limit.
+fn check_otp_rate_limit(account_sid: &str) -> Result<(), CommandError> {
+    let mut guard = OTP_RATE_LIMITER.lock().unwrap();
+    let map = guard.get_or_insert_with(HashMap::new);
+    
+    let now = Instant::now();
+    let requests = map.entry(account_sid.to_string()).or_insert_with(Vec::new);
+    
+    // Remove requests outside the time window
+    requests.retain(|&t| now.duration_since(t) < OTP_RATE_WINDOW);
+    
+    // Check if limit exceeded
+    if requests.len() >= OTP_RATE_LIMIT {
+        return Err(CommandError::new(
+            "otp.rate_limit_exceeded",
+            "OTP request rate limit exceeded. Please wait a minute before trying again.",
+        ));
+    }
+    
+    // Record this request
+    requests.push(now);
+    Ok(())
+}
 
 /// Retrieve the one-time game-launch password for a given service
 /// account.
@@ -62,6 +106,8 @@ use crate::services::beanfun::{get_otp as service_get_otp, ServiceAccount};
 /// # Errors
 ///
 /// - `auth.session_required` — no login is active.
+/// - `otp.rate_limit_exceeded` — too many OTP requests for this account.
+///   Wait 60 seconds before trying again.
 /// - Any [`LoginError`][le] surfaced by the service (transport,
 ///   JSON parse, WCDES decrypt, server-side intResult ≠ 1). The
 ///   P10.1 `From<LoginError>` impl maps each variant to its
@@ -85,6 +131,9 @@ pub async fn get_otp(
     state: State<'_, AppState>,
     account: ServiceAccount,
 ) -> Result<String, CommandError> {
+    // Check rate limit before making the request
+    check_otp_rate_limit(&account.sid)?;
+    
     let (client, session) = require_auth(state.inner()).await?;
     let otp = service_get_otp(
         &client,

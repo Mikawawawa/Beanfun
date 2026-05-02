@@ -710,9 +710,26 @@ export function installRouterGuards(router: Router, deps: RouterGuardDeps): void
     fitWindow()
   }
 
+  /**
+   * Handle window resize events to re-fit the window.
+   * This is triggered manually when content changes (e.g., expanding a game card).
+   */
+  function handleWindowResize(): void {
+    scheduleOnNextPaint(fitWindow)
+  }
+
+  // Listen for manual resize events from components
+  window.addEventListener('resize', handleWindowResize)
+
   router.afterEach((to) => {
     const w = to.meta.windowWidth as number | undefined
     if (w) currentWidth = w
     scheduleOnNextPaint(attachObserver)
+  })
+
+  // Cleanup on app unload
+  window.addEventListener('beforeunload', () => {
+    window.removeEventListener('resize', handleWindowResize)
+    if (observer) observer.disconnect()
   })
 }

@@ -79,7 +79,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import { ElButton, ElMessage } from 'element-plus'
+import { ElMessage } from 'element-plus'
 
 import { AUTH_ACTIONS, useAuthStore } from '../stores/auth'
 import { useConfigStore } from '../stores/config'
@@ -376,40 +376,39 @@ function handleGameStart(): void {
       {{ t('loginQr.connectionLost') }}
     </p>
 
-    <el-button
+    <button
+      type="button"
       class="qr-form__deeplink"
-      size="default"
       :disabled="!canCopyDeeplink"
       data-testid="qr-copy-deeplink"
       @click="copyDeeplink"
     >
       {{ t('CopyDeeplink') }}
-    </el-button>
+    </button>
 
     <div class="qr-form__actions">
-      <el-button class="qr-form__back" size="default" data-testid="qr-back" @click="goBack">
+      <button type="button" class="qr-form__back" data-testid="qr-back" @click="goBack">
         {{ t('BackRegularLogin') }}
-      </el-button>
-      <el-button
+      </button>
+      <button
+        type="button"
         class="qr-form__refresh"
-        type="primary"
-        size="default"
-        :loading="isStarting"
+        :disabled="isStarting"
         data-testid="qr-refresh"
         @click="refresh"
       >
-        {{ t('RefreshQRCode') }}
-      </el-button>
+        {{ isStarting ? t('Loading') : t('RefreshQRCode') }}
+      </button>
     </div>
 
-    <el-button
+    <button
+      type="button"
       class="qr-form__game-start"
-      size="default"
       data-testid="qr-game-start"
       @click="handleGameStart"
     >
       {{ t('GameStart') }}
-    </el-button>
+    </button>
   </section>
 </template>
 
@@ -417,42 +416,41 @@ function handleGameStart(): void {
 .qr-form {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.25rem;
   align-items: stretch;
   box-sizing: border-box;
-  max-width: 100%;
+  max-width: 320px;
+  margin: 0 auto;
   overflow: hidden;
 }
 
 .qr-form__header {
-  text-align: center;
+  text-align: left;
 }
 
 .qr-form__title {
   margin: 0;
-  font-size: 1rem;
-  font-weight: 700;
-  color: #1f1a16;
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: #111827;
 }
 
 .qr-form__subtitle {
-  margin: 0.375rem 0 0;
-  font-size: 0.8125rem;
-  color: #54443a;
+  margin: 0.25rem 0 0;
+  font-size: 0.875rem;
+  color: #6b7280;
 }
 
 .qr-form__display {
   align-self: center;
-  width: 220px;
-  height: 220px;
+  width: 200px;
+  height: 200px;
   display: grid;
   place-items: center;
   padding: 0.75rem;
   background: #ffffff;
-  border-radius: 12px;
-  box-shadow:
-    inset 0 0 0 1px rgba(0, 0, 0, 0.05),
-    0 6px 16px rgba(0, 0, 0, 0.06);
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
 }
 
 .qr-form__bitmap {
@@ -479,15 +477,33 @@ function handleGameStart(): void {
   margin: 0;
   padding: 0.625rem 0.875rem;
   border-radius: 8px;
-  background: color-mix(in srgb, var(--el-color-danger, #f56c6c) 14%, transparent);
-  color: var(--el-color-danger, #f56c6c);
+  background: #fef2f2;
+  color: #ef4444;
   font-size: 0.8125rem;
   text-align: center;
 }
 
 .qr-form__deeplink {
   width: 100%;
-  font-weight: 600;
+  padding: 0.6875rem 1rem;
+  font-weight: 500;
+  font-size: 0.9375rem;
+  background: #f3f4f6;
+  color: #111827;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.qr-form__deeplink:hover:not(:disabled) {
+  background: #e5e7eb;
+  border-color: #d1d5db;
+}
+
+.qr-form__deeplink:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .qr-form__actions {
@@ -496,19 +512,60 @@ function handleGameStart(): void {
   gap: 0.75rem;
 }
 
-.qr-form__actions :deep(.el-button) {
-  width: 100%;
-  margin-left: 0;
+.qr-form__back {
+  padding: 0.6875rem 1rem;
+  font-weight: 500;
+  font-size: 0.9375rem;
+  background: #f3f4f6;
+  color: #111827;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease;
 }
 
-.qr-form__back,
+.qr-form__back:hover {
+  background: #e5e7eb;
+  border-color: #d1d5db;
+}
+
 .qr-form__refresh {
-  font-weight: 700;
+  padding: 0.6875rem 1rem;
+  font-weight: 500;
+  font-size: 0.9375rem;
+  background: #111827;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 150ms ease, opacity 150ms ease;
+}
+
+.qr-form__refresh:hover:not(:disabled) {
+  background: #374151;
+}
+
+.qr-form__refresh:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .qr-form__game-start {
   width: 100%;
-  font-weight: 700;
+  padding: 0.6875rem 1rem;
+  font-weight: 500;
+  font-size: 0.9375rem;
+  background: #fff;
+  color: #111827;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.qr-form__game-start:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
 }
 
 .qr-form__qr-actions {
@@ -519,8 +576,8 @@ function handleGameStart(): void {
 
 .qr-form__qr-btn {
   appearance: none;
-  background: rgba(255, 255, 255, 0.6);
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
   border-radius: 8px;
   padding: 0.375rem 0.75rem;
   display: inline-flex;
@@ -529,15 +586,17 @@ function handleGameStart(): void {
   cursor: pointer;
   font: inherit;
   font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--bf-on-surface-variant, #54443a);
-  transition: background 150ms ease;
+  font-weight: 400;
+  color: #6b7280;
+  transition: background 150ms ease, border-color 150ms ease;
 }
 .qr-form__qr-btn .material-symbols-outlined {
   font-size: 16px;
 }
 .qr-form__qr-btn:hover {
-  background: rgba(255, 255, 255, 0.9);
+  background: #f3f4f6;
+  border-color: #d1d5db;
+  color: #374151;
 }
 
 .qr-form__overlay {
@@ -552,14 +611,14 @@ function handleGameStart(): void {
 .qr-form__enlarged {
   position: relative;
   background: #fff;
-  border-radius: 16px;
-  padding: 1.5rem;
+  border-radius: 12px;
+  padding: 1.25rem;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
 }
 
 .qr-form__enlarged-img {
-  width: 360px;
-  height: 360px;
+  width: 320px;
+  height: 320px;
   image-rendering: pixelated;
   display: block;
 }
@@ -569,7 +628,7 @@ function handleGameStart(): void {
   top: 0.5rem;
   right: 0.5rem;
   appearance: none;
-  background: rgba(0, 0, 0, 0.06);
+  background: #f3f4f6;
   border: none;
   width: 32px;
   height: 32px;
@@ -577,10 +636,10 @@ function handleGameStart(): void {
   display: grid;
   place-items: center;
   cursor: pointer;
-  color: #333;
+  color: #374151;
   transition: background 150ms ease;
 }
 .qr-form__enlarged-close:hover {
-  background: rgba(0, 0, 0, 0.12);
+  background: #e5e7eb;
 }
 </style>

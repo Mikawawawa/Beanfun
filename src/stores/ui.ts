@@ -289,7 +289,7 @@ export const useUiStore = defineStore('ui', () => {
 
   function applyAll(): void {
     try {
-      setPrimaryColor(themeColor.value)
+      setPrimaryColor('#000000')
     } catch (err) {
       console.error('[ui.applyAll] failed to apply themeColor; falling back to default', err)
       setPrimaryColor(DEFAULT_PRIMARY_COLOR)

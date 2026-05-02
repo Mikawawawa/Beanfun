@@ -186,9 +186,8 @@ async function selectRegion(region: LoginRegion): Promise<void> {
 
 .region-tile {
   appearance: none;
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(20px) saturate(1.2);
-  border: 1px solid rgba(255, 255, 255, 0.85);
+  background: #ffffff;
+  border: 1px solid #e5e5e5;
   border-radius: 10px;
   padding: 1.25rem 1rem;
   display: flex;
@@ -207,33 +206,29 @@ async function selectRegion(region: LoginRegion): Promise<void> {
 .region-tile:hover,
 .region-tile:focus-visible {
   transform: translateY(-3px);
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 10px 24px color-mix(in srgb, var(--bf-primary, #954a00) 22%, transparent);
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   outline: none;
 }
 
 .region-tile:focus-visible {
-  border-color: var(--bf-primary-container, #ff8201);
+  border-color: #000000;
 }
 
 .region-tile--current {
-  border-color: var(--bf-primary-container, #ff8201);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--bf-primary-container, #ff8201) 30%, transparent);
+  border-color: #000000;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
 }
 
 .region-tile__icon {
   width: 72px;
   height: 72px;
   border-radius: 18px;
-  background: linear-gradient(
-    135deg,
-    var(--bf-primary-container, #ff8201),
-    var(--bf-primary, #954a00)
-  );
+  background: linear-gradient(135deg, #666666, #000000);
   color: #fff;
   display: grid;
   place-items: center;
-  box-shadow: 0 8px 20px color-mix(in srgb, var(--bf-primary, #954a00) 35%, transparent);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .region-tile__flag {
@@ -247,7 +242,7 @@ async function selectRegion(region: LoginRegion): Promise<void> {
 
 .region-tile__host {
   font-size: 0.75rem;
-  color: #54443a;
+  color: #666666;
   font-family: 'JetBrains Mono', 'Cascadia Code', 'Consolas', monospace;
 }
 
@@ -256,8 +251,8 @@ async function selectRegion(region: LoginRegion): Promise<void> {
   font-size: 0.75rem;
   padding: 0.25rem 0.5rem;
   border-radius: 9999px;
-  background: color-mix(in srgb, var(--bf-primary-container, #ff8201) 30%, transparent);
-  color: var(--bf-primary, #954a00);
+  background: #f5f5f5;
+  color: #000000;
   font-weight: 600;
   display: inline-flex;
   align-items: center;
@@ -274,7 +269,7 @@ async function selectRegion(region: LoginRegion): Promise<void> {
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.04);
   font-size: 0.75rem;
-  color: #54443a;
+  color: #666666;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -282,7 +277,7 @@ async function selectRegion(region: LoginRegion): Promise<void> {
 
 .region-picker__tip-icon {
   font-size: 18px;
-  color: var(--bf-primary-container, #ff8201);
+  color: #000000;
   flex-shrink: 0;
 }
 </style>

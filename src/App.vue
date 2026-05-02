@@ -106,23 +106,32 @@ onMounted(async () => {
 <style>
 :root {
   font-family:
-    'Plus Jakarta Sans',
     'Inter',
-    'Noto Sans TC',
-    'PingFang TC',
     -apple-system,
     'Segoe UI',
     sans-serif;
   font-size: 14px;
   line-height: 1.5;
-  color: #1f2329;
-  background-color: transparent;
+  color: var(--bf-on-surface, #171717);
+  background-color: #ffffff;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   -webkit-text-size-adjust: 100%;
+
+  /* Element Plus theme — refined neutral */
+  --el-color-primary: #171717;
+  --el-color-primary-dark-2: #000000;
+  --el-color-primary-light-3: #404040;
+  --el-color-primary-light-5: #737373;
+  --el-color-primary-light-7: #a3a3a3;
+  --el-color-primary-light-8: #d4d4d4;
+  --el-color-primary-light-9: #f5f5f5;
+  --el-color-success: #22c55e;
+  --el-color-warning: #f59e0b;
+  --el-color-danger: #ef4444;
 }
 
 html,
@@ -133,16 +142,15 @@ body,
   height: 100%;
   width: 100%;
   overflow: hidden;
-  background: transparent;
+  background: #ffffff;
 }
 
-/* ---- Native app feel: no text selection, no right-click menu ---- */
+/* ---- Native app feel ---- */
 body {
   -webkit-user-select: none;
   user-select: none;
 }
 
-/* Allow selection inside actual input / textarea elements */
 input,
 textarea,
 [contenteditable='true'] {
@@ -150,7 +158,7 @@ textarea,
   user-select: text;
 }
 
-/* ---- Scrollbar — thin, rounded, matches mockup design system ---- */
+/* ---- Smooth scrollbar ---- */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -159,55 +167,101 @@ textarea,
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background-color: rgba(0, 0, 0, 0.15);
+  background-color: var(--bf-outline, #d4d4d4);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(0, 0, 0, 0.3);
+  background-color: var(--bf-on-surface-variant, #525252);
 }
 
-/* ---- Element Plus MessageBox — glass-style override ---- */
+/* ---- Element Plus — refined button styles ---- */
+.el-button--primary {
+  background-color: var(--el-color-primary, #171717) !important;
+  border-color: var(--el-color-primary, #171717) !important;
+  transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.el-button--primary:hover,
+.el-button--primary:focus {
+  background-color: #404040 !important;
+  border-color: #404040 !important;
+}
+
+.el-button--primary:active {
+  background-color: #000000 !important;
+  border-color: #000000 !important;
+}
+
+/* ---- Element Plus inputs ---- */
+.el-input__wrapper {
+  background-color: var(--bf-surface, #ffffff) !important;
+  box-shadow: 0 0 0 1px var(--bf-outline, #d4d4d4) inset !important;
+  transition: box-shadow 150ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.el-input__wrapper:hover {
+  box-shadow: 0 0 0 1px #a3a3a3 inset !important;
+}
+
+.el-input__wrapper.is-focus {
+  box-shadow: 0 0 0 2px var(--el-color-primary, #171717) inset !important;
+}
+
+/* ---- Element Plus checkbox ---- */
+.el-checkbox__input.is-checked .el-checkbox__inner {
+  background-color: var(--el-color-primary, #171717) !important;
+  border-color: var(--el-color-primary, #171717) !important;
+}
+
+/* ---- Element Plus select ---- */
+.el-select .el-input.is-focus .el-input__wrapper {
+  box-shadow: 0 0 0 2px var(--el-color-primary, #171717) inset !important;
+}
+
+/* ---- Element Plus MessageBox ---- */
 .el-overlay {
-  background: rgba(0, 0, 0, 0.35) !important;
+  background: rgba(0, 0, 0, 0.5) !important;
   backdrop-filter: blur(4px);
 }
 
 .el-message-box {
   border-radius: var(--bf-radius-panel, 12px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.6) !important;
+  border: 1px solid var(--bf-outline-variant, #e5e5e5) !important;
   box-shadow:
-    0 20px 48px rgba(0, 0, 0, 0.18),
-    0 4px 12px rgba(0, 0, 0, 0.1) !important;
-  padding: 1.25rem !important;
+    0 4px 24px rgba(0, 0, 0, 0.12),
+    0 1px 4px rgba(0, 0, 0, 0.06) !important;
+  padding: 1.5rem !important;
 }
 
 .el-message-box__header {
-  padding: 0 0 0.75rem !important;
+  padding: 0 0 1rem !important;
 }
 
 .el-message-box__title {
   font-size: 1rem !important;
-  font-weight: 700 !important;
+  font-weight: 600 !important;
+  color: var(--bf-on-surface, #171717) !important;
 }
 
 .el-message-box__content {
   padding: 0 !important;
   font-size: 0.875rem !important;
+  color: var(--bf-on-surface-variant, #525252) !important;
 }
 
 .el-message-box__btns {
-  padding: 1rem 0 0 !important;
+  padding: 1.25rem 0 0 !important;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
 }
 
 .el-message-box__btns .el-button--primary {
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--bf-primary-container, #ff8201) 85%, white 15%),
-    color-mix(in srgb, var(--bf-primary, #954a00) 92%, black 8%)
-  ) !important;
-  border-color: color-mix(in srgb, var(--bf-primary, #954a00) 50%, transparent) !important;
-  color: var(--bf-on-primary, #fff) !important;
-  border-radius: var(--bf-radius-button, 8px) !important;
-  font-weight: 600 !important;
+  background: var(--el-color-primary, #171717) !important;
+  border-color: var(--el-color-primary, #171717) !important;
+  color: #ffffff !important;
+  border-radius: var(--bf-radius-button, 6px) !important;
+  font-weight: 500 !important;
+  padding: 8px 16px !important;
 }
 </style>
