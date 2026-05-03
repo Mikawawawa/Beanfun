@@ -5,6 +5,7 @@
 1. 提升键盘操作效率
 2. 增强时间感知
 3. 优化自动化体验
+4. 添加快捷键支持
 
 ## 改进内容
 
@@ -178,6 +179,126 @@ async function autoPasteOtp(otp: string, options: AutoPasteOptions) {
 - 失败时提供备选方案
 - 用户可控的自动化程度
 
+### 4. 快捷键支持
+
+#### 目标
+
+为常用操作添加快捷键，提升操作效率
+
+#### 全局快捷键
+
+| 快捷键 | 功能 | 适用场景 |
+|--------|------|----------|
+| `Ctrl/Cmd + N` | 添加新游戏 | 账号列表页面 |
+| `Ctrl/Cmd + R` | 刷新账号列表 | 账号列表页面 |
+| `Ctrl/Cmd + ,` | 打开设置 | 全局 |
+| `Esc` | 关闭弹窗/收起卡片 | 弹窗打开时 |
+
+#### 卡片内快捷键
+
+| 快捷键 | 功能 | 适用场景 |
+|--------|------|----------|
+| `Esc` | 收起卡片 | 卡片展开时 |
+| `L` | 启动游戏 | 卡片展开时 |
+| `O` | 获取 OTP | 卡片展开且传统登录模式 |
+| `C` | 复制 OTP | OTP已显示时 |
+| `↑/↓` | 切换选中账号 | 账号列表中 |
+
+#### 实现
+
+```typescript
+// src/composables/useKeyboardShortcuts.ts
+
+export interface ShortcutConfig {
+  key: string
+  ctrl?: boolean
+  cmd?: boolean
+  alt?: boolean
+  shift?: boolean
+  handler: (event: KeyboardEvent) => void | boolean
+  description: string
+}
+
+export function useKeyboardShortcuts(
+  shortcuts: ShortcutConfig[],
+  options: { enabled?: Ref<boolean> } = {}
+) {
+  const { enabled = ref(true) } = options
+  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
+
+  function handleKeyDown(event: KeyboardEvent) {
+    if (!enabled.value) return
+
+    for (const shortcut of shortcuts) {
+      const keyMatch = event.key.toLowerCase() === shortcut.key.toLowerCase()
+      const ctrlMatch = shortcut.ctrl ? (isMac ? event.metaKey : event.ctrlKey) : true
+      const cmdMatch = shortcut.cmd ? event.metaKey : true
+
+      if (keyMatch && ctrlMatch && cmdMatch) {
+        shortcut.handler(event)
+        event.preventDefault()
+        break
+      }
+    }
+  }
+
+  onMounted(() => {
+    document.addEventListener('keydown', handleKeyDown)
+  })
+
+  onUnmounted(() => {
+    document.removeEventListener('keydown', handleKeyDown)
+  })
+}
+```
+
+#### 使用示例
+
+```typescript
+// AccountList.vue
+import { useKeyboardShortcuts, commonShortcuts } from '../composables/useKeyboardShortcuts'
+
+const shortcuts = [
+  commonShortcuts.addGame(() => {
+    handleOpenAddGame()
+  }),
+  commonShortcuts.refresh(() => {
+    void loadGames()
+  }),
+  commonShortcuts.settings(() => {
+    handleOpenSettings()
+  })
+]
+
+useKeyboardShortcuts(shortcuts)
+```
+
+```typescript
+// GameCardFull.vue
+const cardShortcuts = [
+  {
+    key: 'Escape',
+    handler: () => emit('toggle'),
+    description: '收起卡片'
+  },
+  {
+    key: 'l',
+    handler: () => handleLaunchGame(),
+    description: '启动游戏'
+  }
+]
+
+useKeyboardShortcuts(cardShortcuts, { 
+  enabled: computed(() => props.isExpanded) 
+})
+```
+
+#### 效果
+
+- 提升操作效率
+- 支持键盘导航
+- 符合用户习惯
+
 ## 交互设计原则
 
 ### 效率优先
@@ -198,6 +319,12 @@ async function autoPasteOtp(otp: string, options: AutoPasteOptions) {
 - 提供手动备选方案
 - 尊重用户习惯
 
+### 可访问性
+
+- 支持键盘快捷键
+- 清晰的视觉反馈
+- 平台适配（Mac/Windows）
+
 ## 相关文件
 
 | 文件 | 说明 |
@@ -205,7 +332,10 @@ async function autoPasteOtp(otp: string, options: AutoPasteOptions) {
 | `src/composables/useOtpInputs.ts` | OTP 输入框逻辑 |
 | `src/composables/useTotpCountdown.ts` | TOTP 倒计时 |
 | `src/composables/useGameLauncher.ts` | 游戏启动与自动粘贴 |
+| `src/composables/useKeyboardShortcuts.ts` | 快捷键管理 |
 | `src/pages/LoginTotp.vue` | 2FA 输入页面 |
+| `src/pages/AccountList.vue` | 账号列表页面 |
+| `src/components/GameCardFull.vue` | 游戏卡片组件 |
 
 ## 测试要点
 
@@ -229,9 +359,22 @@ async function autoPasteOtp(otp: string, options: AutoPasteOptions) {
 - [ ] 失败后重试机制
 - [ ] 手动备选方案可用
 
+### 快捷键测试
+
+- [ ] `Ctrl/Cmd + N` 打开添加游戏
+- [ ] `Ctrl/Cmd + R` 刷新列表
+- [ ] `Ctrl/Cmd + ,` 打开设置
+- [ ] `Esc` 关闭弹窗/收起卡片
+- [ ] 卡片内快捷键正常工作
+- [ ] Mac 平台使用 Cmd 键
+
 ## 变更历史
 
 - 2024-XX: 初始改进
   - 添加键盘导航支持
   - 实现 TOTP 倒计时
   - 优化自动粘贴逻辑
+- 2024-XX: 添加快捷键支持
+  - 创建 useKeyboardShortcuts composable
+  - 添加全局快捷键
+  - 添加卡片内快捷键

@@ -961,7 +961,19 @@ mod detect_imp {
 
         let cached = svc_config::get_value(&config_path, &key).await;
         if !cached.is_empty() {
-            return Ok(Some(cached));
+            // 验证缓存的路径是否真实存在
+            let path_exists = tokio::task::spawn_blocking({
+                let cached = cached.clone();
+                move || std::path::Path::new(&cached).exists()
+            })
+            .await
+            .unwrap_or(false);
+            
+            if path_exists {
+                return Ok(Some(cached));
+            }
+            // 路径不存在，清除缓存
+            svc_config::set_value(&config_path, &key, None).await?;
         }
 
         if dir_reg.is_empty() {
@@ -985,11 +997,22 @@ mod detect_imp {
             }))
         })??;
 
+        // 验证注册表路径是否真实存在
         if let Some(ref v) = registry_value {
-            svc_config::set_value(&config_path, &key, Some(v.as_str())).await?;
+            let path_exists = tokio::task::spawn_blocking({
+                let v = v.clone();
+                move || std::path::Path::new(&v).exists()
+            })
+            .await
+            .unwrap_or(false);
+            
+            if path_exists {
+                svc_config::set_value(&config_path, &key, Some(v.as_str())).await?;
+                return Ok(registry_value);
+            }
         }
 
-        Ok(registry_value)
+        Ok(None)
     }
 }
 

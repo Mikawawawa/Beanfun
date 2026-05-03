@@ -152,13 +152,34 @@ const PING_INTERVAL: Duration = Duration::from_secs(60);
 /// [`BeanfunClient`] is cheap to clone (all inner fields are
 /// `Arc<_>`), and cloning keeps ownership semantics simple: the
 /// spawned task outlives any single `AppState::auth` read guard.
+///
+/// # Session persistence
+///
+/// Also saves the session to disk for auto-restore on next app start.
+/// This is best-effort: if the save fails, we still return success
+/// to the user — the in-memory session is what matters for the
+/// current app lifecycle.
 async fn install_session_and_start_ping(
+    app: &AppHandle,
     state: &AppState,
     client: BeanfunClient,
     session: Session,
 ) -> SessionInfo {
+    install_session_and_start_ping_core(state, client, session, Some(app)).await
+}
+
+/// Core implementation of session installation.
+///
+/// The `app` parameter is optional so unit tests can call this without
+/// a full Tauri runtime — persistence is skipped when `app` is `None`.
+async fn install_session_and_start_ping_core(
+    state: &AppState,
+    client: BeanfunClient,
+    session: Session,
+    app: Option<&AppHandle>,
+) -> SessionInfo {
     let info = SessionInfo::from(&session);
-    let ctx = AuthContext::new(client, session);
+    let ctx = AuthContext::new(client, session.clone());
     let ping_client = ctx.client.clone();
     let ping_cancel = ctx.ping_cancel.clone();
 
@@ -172,6 +193,39 @@ async fn install_session_and_start_ping(
         prev_ctx.ping_cancel.cancel();
     }
 
+    // Persist session for auto-restore on next app start.
+    // Best-effort: don't fail the login if save fails.
+    if let Some(app) = app {
+        if let Ok(storage_root) = app.path().app_data_dir() {
+            let session_path = crate::services::storage::default_session_path(&storage_root);
+            let persisted = crate::services::storage::PersistedSession {
+                region: match session.region {
+                    LoginRegion::TW => "TW".to_string(),
+                    LoginRegion::HK => "HK".to_string(),
+                },
+                account_id: session.account_id.clone(),
+                skey: session.skey.clone(),
+                web_token: session.web_token.clone(),
+                service_code: session.service_code.clone(),
+                service_region: session.service_region.clone(),
+                expires_at: None, // TODO: Determine actual TTL from Beanfun response
+                saved_at: std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs() as i64,
+            };
+            if let Err(err) =
+                crate::services::storage::save_session(&session_path, &persisted).await
+            {
+                tracing::warn!(error = %err, "Failed to persist session for auto-restore");
+            } else {
+                tracing::info!("Session persisted for auto-restore");
+            }
+        } else {
+            tracing::warn!("Failed to get app data dir, session not persisted");
+        }
+    }
+
     spawn_ping_loop(ping_client, ping_cancel);
     info
 }
@@ -181,7 +235,7 @@ async fn install_session_and_start_ping(
 /// Split out of [`install_session_and_start_ping`] so unit tests can
 /// drive [`run_ping_loop`] directly without a live Tokio reactor
 /// observing a spawned future.
-fn spawn_ping_loop(client: BeanfunClient, cancel: CancellationToken) {
+pub(crate) fn spawn_ping_loop(client: BeanfunClient, cancel: CancellationToken) {
     tokio::spawn(run_ping_loop(client, cancel));
 }
 
@@ -209,7 +263,7 @@ fn spawn_ping_loop(client: BeanfunClient, cancel: CancellationToken) {
 /// retry. If the session is genuinely dead the user will find out
 /// on their next meaningful action (Get OTP, launch game), just
 /// like WPF.
-async fn run_ping_loop(client: BeanfunClient, cancel: CancellationToken) {
+pub(crate) async fn run_ping_loop(client: BeanfunClient, cancel: CancellationToken) {
     run_ping_loop_with_interval(client, cancel, PING_INTERVAL).await;
 }
 
@@ -376,6 +430,7 @@ fn default_method_for(region: LoginRegion) -> LoginMethod<'static> {
 #[tauri::command]
 #[specta::specta]
 pub async fn login_regular(
+    app: AppHandle,
     state: State<'_, AppState>,
     region: LoginRegion,
     account: String,
@@ -394,7 +449,7 @@ pub async fn login_regular(
 
     match outcome {
         Ok(session) => {
-            let info = install_session_and_start_ping(&state, client, session).await;
+            let info = install_session_and_start_ping(&app, &state, client, session).await;
             Ok(info)
         }
         Err(LoginError::TotpRequired(challenge)) => {
@@ -441,6 +496,7 @@ pub async fn login_regular(
 #[tauri::command]
 #[specta::specta]
 pub async fn login_totp(
+    app: AppHandle,
     state: State<'_, AppState>,
     code: String,
 ) -> Result<SessionInfo, CommandError> {
@@ -463,7 +519,7 @@ pub async fn login_totp(
     .await?;
 
     *state.pending_totp.write().await = None;
-    let info = install_session_and_start_ping(&state, client, session).await;
+    let info = install_session_and_start_ping(&app, &state, client, session).await;
     Ok(info)
 }
 
@@ -642,7 +698,10 @@ pub async fn login_qr_start(
 /// [fin]: crate::services::beanfun::login::finalize_qr_login
 #[tauri::command]
 #[specta::specta]
-pub async fn login_qr_check(state: State<'_, AppState>) -> Result<QrStatus, CommandError> {
+pub async fn login_qr_check(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<QrStatus, CommandError> {
     let (client, init) = {
         let guard = state.pending_qr.read().await;
         let pq = guard.as_ref().ok_or_else(|| {
@@ -666,7 +725,7 @@ pub async fn login_qr_check(state: State<'_, AppState>) -> Result<QrStatus, Comm
         QrPollOutcome::Approved => {
             let session = finalize_qr_login(&client, &init).await?;
             *state.pending_qr.write().await = None;
-            let info = install_session_and_start_ping(&state, client, session).await;
+            let info = install_session_and_start_ping(&app, &state, client, session).await;
             Ok(QrStatus::Approved { session: info })
         }
     }
@@ -1102,7 +1161,10 @@ async fn handle_gamepass_page_load<R: tauri::Runtime>(
         return;
     }
 
-    let info = install_session_and_start_ping(&state, client, session).await;
+    // For gamepass completion, we don't need to persist the session again
+    // (it was already persisted during the initial login flow).
+    // Use the core function with None for app to skip persistence.
+    let info = install_session_and_start_ping_core(&state, client, session, None::<&AppHandle>).await;
 
     tracing::info!(
         step = "GamepassCompletion.Success",
@@ -1816,6 +1878,8 @@ async fn clear_all_auth_state(state: &AppState) {
 ///   After this command returns, every subsequent command that
 ///   calls `require_auth` / reads a pending slot will surface its
 ///   typed "not started" / "session_required" error.
+/// - Clears the persisted session file (Session.dat) so the next
+///   app start won't attempt auto-restore.
 ///
 /// # Idempotence
 ///
@@ -1834,7 +1898,10 @@ async fn clear_all_auth_state(state: &AppState) {
 /// [svc]: crate::services::beanfun::login::logout()
 #[tauri::command]
 #[specta::specta]
-pub async fn logout(state: State<'_, AppState>) -> Result<(), CommandError> {
+pub async fn logout(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<(), CommandError> {
     // Take ownership of the prior auth context so the subsequent
     // HTTP calls run without holding any AppState lock across
     // `.await`. If `auth` was `None` we still fall through to the
@@ -1858,6 +1925,18 @@ pub async fn logout(state: State<'_, AppState>) -> Result<(), CommandError> {
                 "server-side logout failed; local state will still be cleared"
             );
         }
+    }
+
+    // Clear the persisted session file so auto-restore won't
+    // attempt to revive this session on next app start.
+    let storage_root = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| CommandError::new("storage.path_failed", format!("{e}")))?;
+    let session_path = crate::services::storage::default_session_path(&storage_root);
+    if let Err(err) = crate::services::storage::clear_session(&session_path).await {
+        tracing::warn!(error = %err, "Failed to clear persisted session file");
+        // Non-fatal: local auth state is already cleared above.
     }
 
     clear_all_auth_state(&state).await;
@@ -2056,7 +2135,7 @@ mod tests {
         // the keep-alive loop, only `client` is.
         let session = fake_session();
 
-        let _info = install_session_and_start_ping(&state, client, session).await;
+        let _info = install_session_and_start_ping_core(&state, client, session, None).await;
 
         assert!(
             state.auth.read().await.is_some(),
@@ -2100,7 +2179,7 @@ mod tests {
         let state = empty_state();
 
         let first_client = ping_client_against(&server);
-        install_session_and_start_ping(&state, first_client, fake_session()).await;
+        install_session_and_start_ping_core(&state, first_client, fake_session(), None).await;
         let first_token = state
             .auth
             .read()
@@ -2115,7 +2194,7 @@ mod tests {
         );
 
         let second_client = ping_client_against(&server);
-        install_session_and_start_ping(&state, second_client, fake_session()).await;
+        install_session_and_start_ping_core(&state, second_client, fake_session(), None).await;
         assert!(
             first_token.is_cancelled(),
             "replacing an auth context must cancel the prior ping loop",

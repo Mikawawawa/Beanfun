@@ -1,163 +1,189 @@
 <script setup lang="ts">
-/**
- * GameAccountCard - 游戏和账号信息聚合卡片
- *
- * 布局：
- * 1. 游戏信息区：游戏图片 + 游戏名称 + 状态 + 快捷操作（会员、客服、工具）
- * 2. 账号信息行：账号名称（带下拉菜单）+ Gash 点数
- * 3. 启动游戏：占满宽度的按钮
- */
-
-import { VideoPlay, Refresh, Wallet, ArrowDown, DocumentCopy, Key, Operation } from '@element-plus/icons-vue'
-import { ElIcon, ElDropdown, ElDropdownMenu, ElDropdownItem } from 'element-plus'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import type { ServiceAccount } from '../types/bindings'
+import { commands } from '../types/bindings'
 
-defineProps<{
+const props = defineProps<{
+  account: ServiceAccount
   gameName: string
-  gameImage?: string | null
-  gameStatus: string
-  showAccountSection: boolean
-  accountName: string
-  accountId?: string
-  isBanned: boolean
-  balance: string
-  refreshing: boolean
-  showToolsButton?: boolean
+  gameIcon: string
+  isExpanded?: boolean
 }>()
 
 const emit = defineEmits<{
-  (event: 'start-game'): void
-  (event: 'change-game'): void
-  (event: 'refresh-balance'): void
-  (event: 'add-value'): void
-  (event: 'member-center'): void
-  (event: 'customer-service'): void
-  (event: 'tools'): void
-  (event: 'copy-account-id'): void
-  (event: 'get-otp'): void
+  (e: 'launch', accountId: string): void
+  (e: 'toggle-expand', accountId: string): void
+  (e: 'remove', accountId: string): void
 }>()
 
 const { t } = useI18n()
+
+const isGettingOtp = ref(false)
+const isLaunching = ref(false)
+
+const isBanned = computed(() => !props.account.is_enable)
+
+const displayAccountId = computed(() => {
+  const id = props.account.sname
+  if (id.length <= 12) return id
+  return id.slice(0, 6) + '...' + id.slice(-3)
+})
+
+const fullAccountId = computed(() => props.account.sname)
+
+async function handleCopyAccount() {
+  try {
+    await navigator.clipboard.writeText(fullAccountId.value)
+    ElMessage.success(t('AccountCopied'))
+  } catch {
+    ElMessage.error(t('CopyFailed'))
+  }
+}
+
+async function handleGetOtp() {
+  if (isGettingOtp.value) return
+  isGettingOtp.value = true
+
+  try {
+    const result = await commands.getOtp(props.account)
+    if (result.status === 'ok') {
+      await navigator.clipboard.writeText(result.data)
+      ElMessage.success(t('OTPCopied', { code: result.data }))
+    } else {
+      ElMessage.error(result.error.message || t('OTPFailed'))
+    }
+  } catch (err) {
+    console.error('Failed to get OTP:', err)
+    ElMessage.error(t('OTPFailed'))
+  } finally {
+    isGettingOtp.value = false
+  }
+}
+
+async function handleLaunch() {
+  if (isLaunching.value || isBanned.value) return
+  isLaunching.value = true
+
+  try {
+    emit('launch', props.account.sid)
+  } finally {
+    isLaunching.value = false
+  }
+}
+
+async function handleRemove() {
+  try {
+    await ElMessageBox.confirm(
+      t('RemoveAccountConfirm', { account: displayAccountId.value }),
+      t('Confirm'),
+      {
+        confirmButtonText: t('Remove'),
+        cancelButtonText: t('Cancel'),
+        type: 'warning',
+      }
+    )
+    emit('remove', props.account.sid)
+  } catch {
+    // User cancelled
+  }
+}
+
+function handleToggleExpand() {
+  emit('toggle-expand', props.account.sid)
+}
 </script>
 
 <template>
   <div class="game-account-card">
-    <!-- 第1行：游戏信息区 - 图片 + 名称/状态 + 快捷操作 -->
+    <!-- 第1行：游戏信息区 -->
     <div class="game-account-card__game">
-      <div class="game-account-card__game-main" @click="emit('change-game')">
+      <div class="game-account-card__game-main" @click="handleToggleExpand">
         <div class="game-account-card__game-icon">
           <img
-            v-if="gameImage"
-            :src="gameImage"
+            v-if="gameIcon"
+            :src="gameIcon"
             :alt="gameName"
             class="game-account-card__game-image"
           />
-          <el-icon v-else :size="28"><video-play /></el-icon>
+          <span v-else class="material-symbols-outlined">sports_esports</span>
         </div>
         <div class="game-account-card__game-info">
           <span class="game-account-card__game-name">{{ gameName }}</span>
           <span class="game-account-card__game-status">
-            <span class="game-account-card__status-dot" />
-            {{ gameStatus }}
+            <span class="game-account-card__status-dot"></span>
+            {{ isBanned ? t('Banned') : t('Active') }}
           </span>
         </div>
       </div>
-      
-      <!-- 快捷操作按钮 -->
       <div class="game-account-card__game-actions">
         <button
-          type="button"
           class="game-account-card__action-btn"
-          :title="t('accountList.memberCenter')"
-          @click="emit('member-center')"
+          @click="handleRemove"
+          :title="t('RemoveAccount')"
         >
-          {{ t('accountList.memberCenterShort') }}
-        </button>
-        <button
-          type="button"
-          class="game-account-card__action-btn"
-          :title="t('accountList.customerService')"
-          @click="emit('customer-service')"
-        >
-          {{ t('accountList.customerServiceShort') }}
-        </button>
-        <button
-          v-if="showToolsButton"
-          type="button"
-          class="game-account-card__action-btn"
-          :title="t('accountList.toolsButton')"
-          @click="emit('tools')"
-        >
-          <el-icon><operation /></el-icon>
+          <span class="material-symbols-outlined" style="font-size: 14px">delete</span>
         </button>
       </div>
     </div>
 
-    <!-- 第2行：账号信息行 - 账号（带下拉）+ Gash -->
+    <!-- 第2行：账号信息行 -->
     <div class="game-account-card__info-row">
-      <!-- 账号信息（带下拉菜单） -->
-      <div v-if="showAccountSection" class="game-account-card__account-section">
-        <span class="game-account-card__label">{{ t('accountList.currentAccount') }}</span>
+      <div class="game-account-card__account-section">
+        <span class="game-account-card__label">{{ t('Account') }}</span>
         <div class="game-account-card__account-wrapper">
-          <el-dropdown trigger="click" placement="bottom-start">
-            <span
-              class="game-account-card__account-name"
-              :class="{ 'game-account-card__account-name--banned': isBanned }"
-            >
-              {{ accountName }}
-              <el-icon class="game-account-card__dropdown-icon"><arrow-down /></el-icon>
+          <span
+            class="game-account-card__account-name"
+            :class="{ 'game-account-card__account-name--banned': isBanned }"
+            @click="handleCopyAccount"
+            :title="fullAccountId"
+          >
+            {{ displayAccountId }}
+            <span class="material-symbols-outlined game-account-card__dropdown-icon">
+              content_copy
             </span>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item @click="emit('copy-account-id')">
-                  <el-icon><document-copy /></el-icon>
-                  <span>{{ t('accountList.copyAccountId') }}</span>
-                </el-dropdown-item>
-                <el-dropdown-item @click="emit('get-otp')">
-                  <el-icon><key /></el-icon>
-                  <span>{{ t('accountList.getOtp') }}</span>
-                </el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
-          <span v-if="isBanned" class="game-account-card__banned-tag">
-            {{ t('accountList.statusBanned') }}
           </span>
+          <span v-if="isBanned" class="game-account-card__banned-tag">{{ t('Banned') }}</span>
         </div>
       </div>
 
-      <!-- Gash 余额 -->
       <div class="game-account-card__balance-section">
-        <span class="game-account-card__label">{{ t('accountList.gashBalance') }}</span>
+        <span class="game-account-card__label">{{ t('Balance') }}</span>
         <div class="game-account-card__balance-value-wrapper">
-          <span class="game-account-card__balance-value">{{ balance }}</span>
+          <span class="game-account-card__balance-value">{{ '0' }} PT</span>
           <button
-            type="button"
             class="game-account-card__icon-btn"
-            :class="{ 'game-account-card__icon-btn--spinning': refreshing }"
-            :title="t('accountList.refreshBalance')"
-            :disabled="refreshing"
-            @click="emit('refresh-balance')"
+            :disabled="isGettingOtp"
+            @click="handleGetOtp"
+            :title="t('GetOTP')"
           >
-            <el-icon><refresh /></el-icon>
-          </button>
-          <button
-            type="button"
-            class="game-account-card__icon-btn game-account-card__icon-btn--primary"
-            :title="t('accountList.addValue')"
-            @click="emit('add-value')"
-          >
-            <el-icon><wallet /></el-icon>
+            <span
+              class="material-symbols-outlined"
+              :class="{ 'game-account-card__icon-btn--spinning': isGettingOtp }"
+            >
+              vpn_key
+            </span>
           </button>
         </div>
       </div>
     </div>
 
-    <!-- 第3行：启动游戏（占满宽度） -->
+    <!-- 第3行：启动游戏 -->
     <div class="game-account-card__launch-row">
-      <button type="button" class="game-account-card__launch-btn" @click="emit('start-game')">
-        <el-icon><video-play /></el-icon>
-        <span>{{ t('GameStart') }}</span>
+      <button
+        class="game-account-card__launch-btn"
+        :disabled="isLaunching || isBanned"
+        @click="handleLaunch"
+      >
+        <span
+          v-if="isLaunching"
+          class="material-symbols-outlined game-account-card__icon-btn--spinning"
+        >
+          progress_activity
+        </span>
+        <span v-else class="material-symbols-outlined">play_arrow</span>
+        {{ isBanned ? t('Banned') : t('LaunchGame') }}
       </button>
     </div>
   </div>
@@ -166,8 +192,8 @@ const { t } = useI18n()
 <style scoped>
 .game-account-card {
   padding: 0.75rem 1rem;
-  background: #fff;
-  border: 1px solid #e5e7eb;
+  background: var(--bf-bg-primary);
+  border: 1px solid var(--bf-border);
   border-radius: 8px;
   margin: 0 0 0.75rem;
 }
@@ -179,7 +205,7 @@ const { t } = useI18n()
   justify-content: space-between;
   gap: 0.75rem;
   padding-bottom: 0.625rem;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--bf-bg-secondary);
 }
 
 .game-account-card__game-main {
@@ -198,7 +224,7 @@ const { t } = useI18n()
   width: 44px;
   height: 44px;
   border-radius: 8px;
-  background: #f3f4f6;
+  background: var(--bf-bg-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -221,7 +247,7 @@ const { t } = useI18n()
 .game-account-card__game-name {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--bf-text-primary);
   line-height: 1.2;
 }
 
@@ -230,14 +256,14 @@ const { t } = useI18n()
   align-items: center;
   gap: 0.375rem;
   font-size: 0.8125rem;
-  color: #22c55e;
+  color: var(--bf-success);
 }
 
 .game-account-card__status-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #22c55e;
+  background: var(--bf-success);
 }
 
 .game-account-card__game-actions {
@@ -248,9 +274,9 @@ const { t } = useI18n()
 .game-account-card__action-btn {
   padding: 0.375rem 0.625rem;
   font-size: 0.75rem;
-  color: #6b7280;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  color: var(--bf-text-tertiary);
+  background: var(--bf-bg-secondary);
+  border: 1px solid var(--bf-border);
   border-radius: 6px;
   cursor: pointer;
   transition: all 150ms ease;
@@ -260,8 +286,8 @@ const { t } = useI18n()
 }
 
 .game-account-card__action-btn:hover {
-  background: #f3f4f6;
-  color: #374151;
+  background: var(--bf-bg-tertiary);
+  color: var(--bf-text-secondary);
 }
 
 /* 第2行：账号信息行 */
@@ -275,7 +301,7 @@ const { t } = useI18n()
 .game-account-card__label {
   display: block;
   font-size: 0.6875rem;
-  color: #9ca3af;
+  color: var(--bf-text-disabled);
   margin-bottom: 0.25rem;
   text-transform: uppercase;
   letter-spacing: 0.025em;
@@ -296,7 +322,7 @@ const { t } = useI18n()
 .game-account-card__account-name {
   font-size: 0.9375rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--bf-text-primary);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -305,25 +331,25 @@ const { t } = useI18n()
 }
 
 .game-account-card__account-name:hover {
-  color: #2563eb;
+  color: var(--bf-info);
 }
 
 .game-account-card__account-name--banned {
   text-decoration: line-through;
   font-style: italic;
-  color: #9ca3af;
+  color: var(--bf-text-disabled);
 }
 
 .game-account-card__dropdown-icon {
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: var(--bf-text-disabled);
 }
 
 .game-account-card__banned-tag {
   padding: 0.125rem 0.375rem;
   font-size: 0.6875rem;
-  color: #ef4444;
-  background: #fef2f2;
+  color: var(--bf-danger);
+  background: rgba(239, 68, 68, 0.1);
   border-radius: 4px;
 }
 
@@ -342,7 +368,7 @@ const { t } = useI18n()
 .game-account-card__balance-value {
   font-size: 0.9375rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--bf-text-primary);
 }
 
 .game-account-card__icon-btn {
@@ -355,13 +381,13 @@ const { t } = useI18n()
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  color: #9ca3af;
+  color: var(--bf-text-disabled);
   transition: all 150ms ease;
 }
 
 .game-account-card__icon-btn:hover:not(:disabled) {
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--bf-bg-secondary);
+  color: var(--bf-text-tertiary);
 }
 
 .game-account-card__icon-btn:disabled {
@@ -379,12 +405,12 @@ const { t } = useI18n()
 }
 
 .game-account-card__icon-btn--primary {
-  color: #3b82f6;
+  color: var(--bf-info);
 }
 
 .game-account-card__icon-btn--primary:hover {
-  background: #eff6ff;
-  color: #2563eb;
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--bf-info);
 }
 
 /* 第3行：启动游戏 */
@@ -401,8 +427,8 @@ const { t } = useI18n()
   padding: 0.75rem;
   font-size: 0.9375rem;
   font-weight: 600;
-  color: #fff;
-  background: #171717;
+  color: var(--bf-text-inverse);
+  background: var(--bf-text-primary);
   border: none;
   border-radius: 8px;
   cursor: pointer;
@@ -410,6 +436,6 @@ const { t } = useI18n()
 }
 
 .game-account-card__launch-btn:hover {
-  background: #374151;
+  background: var(--bf-text-secondary);
 }
 </style>

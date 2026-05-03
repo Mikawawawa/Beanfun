@@ -11,10 +11,10 @@
  * This design minimizes OTP API calls to prevent account flags.
  */
 
-import { computed, onMounted, ref, nextTick } from 'vue'
+import { computed, onMounted, ref, nextTick, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import { Loading } from '@element-plus/icons-vue'
+import { Loading, Plus } from '@element-plus/icons-vue'
 
 import { useAuthStore } from '../stores/auth'
 import { useAccountStore } from '../stores/account'
@@ -22,9 +22,15 @@ import { useConfigStore } from '../stores/config'
 import { useGameStore, gameCodeOf } from '../stores/game'
 import { commands } from '../types/bindings'
 import { wrapCommand } from '../services/invoke'
+import * as gamePathService from '../services/gamePath'
+import { useKeyboardShortcuts, commonShortcuts } from '../composables/useKeyboardShortcuts'
 
 import TitleBar from '../components/TitleBar.vue'
 import GameCardFull from '../components/GameCardFull.vue'
+import AddGameDialog from '../components/AddGameDialog.vue'
+import GameSettingsDialog from '../components/GameSettingsDialog.vue'
+import ToolsDialogStack from '../windows/ToolsDialogStack.vue'
+import type { GameService, GameIniEntry } from '../types/bindings'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -38,12 +44,35 @@ const game = useGameStore()
 const expandedGameCode = ref<string | null>(null)
 const gameCardsLoading = ref(false)
 
+// 用户已添加的游戏列表（从配置读取）
+const addedGameCodes = ref<string[]>([])
+
 // Map of game code to account count (loaded once on mount)
 const gameAccountCounts = ref<Record<string, number>>({})
 
+// 添加游戏对话框
+const showAddGameDialog = ref(false)
+const addGameDialogRef = ref<InstanceType<typeof AddGameDialog> | null>(null)
+
+// 工具对话框
+const toolsDialogRef = ref<InstanceType<typeof ToolsDialogStack> | null>(null)
+
+// 游戏设置弹窗
+const showGameSettings = ref(false)
+const settingsGame = ref<GameService | null>(null)
+const settingsGameIni = ref<GameIniEntry | null>(null)
+
 /* --------------- computed --------------- */
 
-const hasGames = computed(() => game.services.length > 0)
+const hasGames = computed(() => addedGameCodes.value.length > 0)
+
+// 过滤出已添加的游戏
+const addedGames = computed(() => {
+  return game.services.filter(g => {
+    const code = gameCodeOf(g.service_code, g.service_region)
+    return addedGameCodes.value.includes(code)
+  })
+})
 
 /* --------------- game card helpers --------------- */
 
@@ -97,12 +126,21 @@ function handleAccountsUpdate(serviceCode: string, serviceRegion: string, accoun
   gameAccountCounts.value[code] = accounts.length
 }
 
+function isMapleStory(serviceCode: string): boolean {
+  // 新枫之谷的服务代码是 610074
+  return serviceCode === '610074'
+}
+
 /* --------------- initialization --------------- */
 
 async function loadGames(): Promise<void> {
   gameCardsLoading.value = true
   try {
+    // 加载所有可用游戏信息
     await game.loadGames()
+    
+    // 从配置读取用户已添加的游戏列表
+    loadAddedGames()
     
     // Restore last selected game or expand first game
     await restoreGameSelection()
@@ -111,15 +149,34 @@ async function loadGames(): Promise<void> {
   }
 }
 
+// 从配置加载已添加的游戏列表
+function loadAddedGames() {
+  const saved = configStore.get('addedGames')
+  if (saved) {
+    try {
+      addedGameCodes.value = JSON.parse(saved)
+    } catch {
+      addedGameCodes.value = []
+    }
+  } else {
+    addedGameCodes.value = []
+  }
+}
+
+// 保存已添加的游戏列表到配置
+async function saveAddedGames() {
+  await configStore.set('addedGames', JSON.stringify(addedGameCodes.value))
+}
+
 async function restoreGameSelection(): Promise<void> {
   const saved = configStore.get('loginGame')
   
-  if (saved) {
+  if (saved && addedGameCodes.value.includes(saved)) {
     const sep = saved.lastIndexOf('_')
     if (sep > 0) {
       const code = saved.substring(0, sep)
       const region = saved.substring(sep + 1)
-      const found = game.services.find(
+      const found = addedGames.value.find(
         s => s.service_code === code && s.service_region === region
       )
       if (found) {
@@ -130,23 +187,74 @@ async function restoreGameSelection(): Promise<void> {
     }
   }
   
-  // Expand first game by default
-  if (game.services.length > 0) {
-    const first = game.services[0]
-    const code = gameCodeOf(first.service_code, first.service_region)
-    expandedGameCode.value = code
-    game.selectGame(first.service_code, first.service_region)
+  // 自动展开第一个已安装的游戏
+  for (const g of addedGames.value) {
+    const code = gameCodeOf(g.service_code, g.service_region)
+    const ini = getIniForGame(g.service_code, g.service_region)
+    if (ini) {
+      const isInstalled = await gamePathService.isInstalled(code, ini)
+      if (isInstalled) {
+        expandedGameCode.value = code
+        game.selectGame(g.service_code, g.service_region)
+        // 保存选择
+        void configStore.set('loginGame', code)
+        return
+      }
+    }
+  }
+}
+
+/* --------------- add game --------------- */
+
+function handleOpenAddGame() {
+  console.log('Opening add game dialog...')
+  showAddGameDialog.value = true
+  console.log('showAddGameDialog set to:', showAddGameDialog.value)
+  // 传递已添加的游戏列表给对话框
+  nextTick(() => {
+    console.log('nextTick called')
+    addGameDialogRef.value?.setAddedGames(addedGameCodes.value)
+    addGameDialogRef.value?.loadAvailableGames()
+  })
+}
+
+async function handleGameAdded(gameCode: string, _path: string) {
+  if (!addedGameCodes.value.includes(gameCode)) {
+    addedGameCodes.value.push(gameCode)
+    await saveAddedGames()
+    
+    // 展开新添加的游戏
+    expandedGameCode.value = gameCode
+    const sep = gameCode.lastIndexOf('_')
+    if (sep > 0) {
+      const code = gameCode.substring(0, sep)
+      const region = gameCode.substring(sep + 1)
+      game.selectGame(code, region)
+    }
   }
 }
 
 /* --------------- header actions --------------- */
 
 function handleOpenSettings(): void {
+  console.log('Opening settings...')
   void router.push('/settings')
 }
 
 function handleOpenAbout(): void {
   void router.push('/about')
+}
+
+/* --------------- game card actions --------------- */
+
+function handleOpenGameSettings(game: GameService): void {
+  settingsGame.value = game
+  settingsGameIni.value = getIniForGame(game.service_code, game.service_region)
+  showGameSettings.value = true
+}
+
+function handleOpenGameTools(gameCode: string): void {
+  void toolsDialogRef.value?.openForGame(gameCode)
 }
 
 /* --------------- Gash balance (D11) --------------- */
@@ -170,6 +278,49 @@ const formattedRemainPoint = computed(() => {
   const showInGame = region !== 'TW' && value !== 0
   const inGameSuffix = showInGame ? t('GashRemainInGame', [Math.floor(value / 2.5)]) : ''
   return t('GashRemain', [`${value}${inGameSuffix}`])
+})
+
+/* --------------- keyboard shortcuts --------------- */
+
+// 快捷键启用状态（弹窗打开时禁用）
+const shortcutsEnabled = ref(true)
+
+// 定义快捷键
+const shortcuts = [
+  commonShortcuts.addGame(() => {
+    if (!showAddGameDialog.value) {
+      handleOpenAddGame()
+    }
+  }),
+  commonShortcuts.refresh(() => {
+    void loadGames()
+  }),
+  commonShortcuts.settings(() => {
+    if (!showAddGameDialog.value && !showGameSettings.value) {
+      handleOpenSettings()
+    }
+  }),
+  commonShortcuts.escape(() => {
+    if (showAddGameDialog.value) {
+      showAddGameDialog.value = false
+    } else if (showGameSettings.value) {
+      showGameSettings.value = false
+    } else if (expandedGameCode.value) {
+      expandedGameCode.value = null
+    }
+  })
+]
+
+// 注册快捷键
+useKeyboardShortcuts(shortcuts, { enabled: shortcutsEnabled })
+
+// 监听弹窗状态，打开时禁用快捷键
+watch(showAddGameDialog, (val) => {
+  shortcutsEnabled.value = !val
+})
+
+watch(showGameSettings, (val) => {
+  shortcutsEnabled.value = !val
 })
 
 /* --------------- lifecycle --------------- */
@@ -229,25 +380,67 @@ onMounted(() => {
           <span>{{ t('accountList.loadingGames') }}</span>
         </div>
 
-        <!-- Empty State -->
-        <div v-else-if="!hasGames" class="account-list__empty">
-          <p>{{ t('accountList.noGames') }}</p>
+        <!-- Empty State - Vercel Style -->
+        <div v-else-if="!hasGames" class="account-list__empty-vercel">
+          <div class="empty-icon-vercel">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+              <line x1="12" y1="8" x2="12" y2="16"/>
+              <line x1="8" y1="12" x2="16" y2="12"/>
+            </svg>
+          </div>
+          <h3 class="empty-title-vercel">{{ t('accountList.noGamesTitle') }}</h3>
+          <p class="empty-desc-vercel">{{ t('accountList.noGamesDesc') }}</p>
+          <button class="empty-action-btn-vercel" @click="handleOpenAddGame">
+            <el-icon><Plus /></el-icon>
+            {{ t('accountList.addFirstGame') }}
+          </button>
         </div>
 
         <!-- Game Cards List -->
         <div v-else class="account-list__game-cards">
           <GameCardFull
-            v-for="g in game.services"
+            v-for="g in addedGames"
             :key="gameCodeOf(g.service_code, g.service_region)"
             :game="g"
             :ini="getIniForGame(g.service_code, g.service_region)"
             :is-expanded="isGameExpanded(g.service_code, g.service_region)"
+            :show-character-info="isMapleStory(g.service_code)"
             @toggle="toggleGameCard(g.service_code, g.service_region)"
             @update:accounts="handleAccountsUpdate(g.service_code, g.service_region, $event)"
+            @open-settings="handleOpenGameSettings"
+            @open-tools="handleOpenGameTools"
           />
+          
+          <!-- Add Game Button -->
+          <el-button
+            class="add-game-btn"
+            @click="handleOpenAddGame"
+          >
+            <el-icon><Plus /></el-icon>
+            {{ t('accountList.addGame') }}
+          </el-button>
         </div>
       </div>
     </div>
+    
+    <!-- Add Game Dialog -->
+    <AddGameDialog
+      ref="addGameDialogRef"
+      v-model="showAddGameDialog"
+      @add="handleGameAdded"
+    />
+    
+    <!-- Tools Dialog Stack -->
+    <ToolsDialogStack ref="toolsDialogRef" />
+    
+    <!-- Game Settings Dialog -->
+    <GameSettingsDialog
+      v-model="showGameSettings"
+      :game="settingsGame"
+      :ini="settingsGameIni"
+      @open-tools="handleOpenGameTools"
+    />
   </main>
 </template>
 
@@ -269,7 +462,7 @@ onMounted(() => {
   place-items: center;
   border-radius: 6px;
   cursor: pointer;
-  color: #666;
+  color: var(--bf-text-tertiary);
   transition: background 150ms ease;
   padding: 0;
 }
@@ -279,7 +472,7 @@ onMounted(() => {
 }
 
 .account-list__titlebar-btn:hover {
-  background: rgba(0, 0, 0, 0.06);
+  background: var(--bf-bg-hover);
 }
 
 .account-list__scroll {
@@ -297,15 +490,16 @@ onMounted(() => {
   gap: 1rem;
 }
 
-/* Balance Bar */
+/* Balance Bar - Vercel Style */
 .account-list__balance-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0.75rem 1rem;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  background: var(--bf-bg-secondary);
+  border: 1px solid var(--bf-border);
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .account-list__balance-display {
@@ -315,37 +509,51 @@ onMounted(() => {
 }
 
 .account-list__balance-label {
-  font-size: 0.875rem;
-  color: #6b7280;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--bf-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0.25rem 0.5rem;
+  background: var(--bf-bg-tertiary);
+  border-radius: 4px;
 }
 
 .account-list__balance-value {
   font-size: 1rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--bf-text-primary);
+  letter-spacing: -0.01em;
 }
 
 .account-list__balance-refresh {
   appearance: none;
-  background: transparent;
-  border: none;
+  background: var(--bf-bg-primary);
+  border: 1px solid var(--bf-border);
   cursor: pointer;
-  color: #6b7280;
-  padding: 0.25rem;
-  border-radius: 6px;
-  transition: all 150ms ease;
+  color: var(--bf-text-secondary);
+  padding: 0.375rem;
+  border-radius: 8px;
+  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 28px;
+  height: 28px;
 }
 
 .account-list__balance-refresh:hover:not(:disabled) {
-  color: #111827;
-  background: #e5e7eb;
+  color: var(--bf-text-primary);
+  background: var(--bf-bg-tertiary);
+  border-color: var(--bf-border-hover);
+}
+
+.account-list__balance-refresh:active:not(:disabled) {
+  transform: scale(0.92);
 }
 
 .account-list__balance-refresh:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
@@ -366,7 +574,7 @@ onMounted(() => {
   justify-content: center;
   gap: 1rem;
   padding: 3rem;
-  color: #6b7280;
+  color: var(--bf-text-tertiary);
 }
 
 .account-list__loading-icon {
@@ -381,8 +589,9 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   padding: 3rem;
-  color: #6b7280;
+  color: var(--bf-text-tertiary);
   text-align: center;
+  gap: 1rem;
 }
 
 /* Game Cards */
@@ -391,5 +600,10 @@ onMounted(() => {
   flex-direction: column;
   gap: 0.75rem;
   padding-bottom: 1rem;
+}
+
+.add-game-btn {
+  margin-top: 0.5rem;
+  width: 100%;
 }
 </style>

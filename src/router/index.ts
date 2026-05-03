@@ -91,8 +91,22 @@ import { registerSessionExpiredHandler } from '../services/invoke'
  * content height differs from the route meta default (e.g.
  * Settings page without the Game section when unauthenticated).
  */
-export function resizeWindow(width: number, height: number): void {
-  void getCurrentWindow().setSize(new PhysicalSize(width, height))
+export async function resizeWindow(width: number, height: number): Promise<void> {
+  // Get current monitor scale factor and convert logical pixels to physical pixels
+  let scaleFactor = 1.0
+  try {
+    const monitor = await currentMonitor()
+    if (monitor) {
+      scaleFactor = monitor.scaleFactor
+    }
+  } catch {
+    // Use default scale factor of 1.0
+  }
+
+  // Convert logical pixels to physical pixels for PhysicalSize
+  const physicalWidth = Math.floor(width * scaleFactor)
+  const physicalHeight = Math.floor(height * scaleFactor)
+  void getCurrentWindow().setSize(new PhysicalSize(physicalWidth, physicalHeight))
 }
 
 import LoginPage from '../pages/LoginPage.vue'
@@ -581,7 +595,7 @@ export function installRouterGuards(router: Router, deps: RouterGuardDeps): void
    * the measurement cycle. The `pendingFrame` guard upstream keeps
    * the rate low enough that this isn't a hot path.
    */
-  function fitWindow(): void {
+  async function fitWindow(): Promise<void> {
     const root = document.querySelector('[data-window-root]') as HTMLElement | null
     if (!root) return
     // Temporarily disable overflow clipping so scrollHeight reflects
@@ -600,7 +614,22 @@ export function installRouterGuards(router: Router, deps: RouterGuardDeps): void
     const h = Math.max(300, Math.min(contentH, cap))
     root.style.height = '100vh'
     void getCurrentWebview().setZoom(zoom)
-    void appWindow.setSize(new PhysicalSize(currentWidth, h))
+
+    // Get current monitor scale factor and convert logical pixels to physical pixels
+    let scaleFactor = 1.0
+    try {
+      const monitor = await currentMonitor()
+      if (monitor) {
+        scaleFactor = monitor.scaleFactor
+      }
+    } catch {
+      // Use default scale factor of 1.0
+    }
+
+    // Convert logical pixels to physical pixels for PhysicalSize
+    const physicalWidth = Math.floor(currentWidth * scaleFactor)
+    const physicalHeight = Math.floor(h * scaleFactor)
+    void appWindow.setSize(new PhysicalSize(physicalWidth, physicalHeight))
   }
 
   /**
@@ -616,18 +645,18 @@ export function installRouterGuards(router: Router, deps: RouterGuardDeps): void
    * Cancels any previously pending callback so an `afterEach` storm
    * collapses to a single fit on the final settled destination.
    */
-  function scheduleOnNextPaint(cb: () => void): void {
+  function scheduleOnNextPaint(cb: (() => void) | (() => Promise<void>)): void {
     if (typeof window === 'undefined' || typeof window.requestAnimationFrame !== 'function') {
       // jsdom / SSR path — just run immediately so specs don't need
       // a rAF polyfill.
-      cb()
+      void cb()
       return
     }
     if (pendingFrame !== null) window.cancelAnimationFrame(pendingFrame)
     pendingFrame = window.requestAnimationFrame(() => {
       pendingFrame = window.requestAnimationFrame(() => {
         pendingFrame = null
-        cb()
+        void cb()
       })
     })
   }
@@ -671,7 +700,7 @@ export function installRouterGuards(router: Router, deps: RouterGuardDeps): void
     let initialNotificationsIgnored = false
     observer = new ResizeObserver(() => {
       if (!initialNotificationsIgnored) return
-      scheduleOnNextPaint(fitWindow)
+      scheduleOnNextPaint(() => void fitWindow())
     })
     observer.observe(root)
     if (content) observer.observe(content)
@@ -681,7 +710,7 @@ export function installRouterGuards(router: Router, deps: RouterGuardDeps): void
     // which ResizeObserver may not catch if the root stays 100vh).
     // A 1rem sentinel element detects font-size changes.
     if (typeof window !== 'undefined') {
-      window.addEventListener('resize', () => scheduleOnNextPaint(fitWindow), { passive: true })
+      window.addEventListener('resize', () => scheduleOnNextPaint(() => void fitWindow()), { passive: true })
 
       // Sentinel: a 0-size element whose width is 1rem. When the
       // system font size changes, its pixel width changes and
@@ -707,7 +736,7 @@ export function installRouterGuards(router: Router, deps: RouterGuardDeps): void
       // exercises the observer path.
       initialNotificationsIgnored = true
     }
-    fitWindow()
+    void fitWindow()
   }
 
   /**
@@ -715,7 +744,7 @@ export function installRouterGuards(router: Router, deps: RouterGuardDeps): void
    * This is triggered manually when content changes (e.g., expanding a game card).
    */
   function handleWindowResize(): void {
-    scheduleOnNextPaint(fitWindow)
+    scheduleOnNextPaint(() => void fitWindow())
   }
 
   // Listen for manual resize events from components

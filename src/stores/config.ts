@@ -115,6 +115,21 @@ export const useConfigStore = defineStore('config', () => {
     }
   }
 
+  /**
+   * Auto-login feature toggle.
+   *
+   * When enabled (`'true'`), the app will attempt to restore the previous
+   * session or auto-login with saved credentials on startup.
+   *
+   * Defaults to `'false'` for security — users must explicitly opt-in.
+   */
+  const enableAutoLogin = computed({
+    get: () => getOr('enableAutoLogin', 'false') === 'true',
+    set: async (value: boolean) => {
+      await set('enableAutoLogin', value ? 'true' : 'false')
+    },
+  })
+
   return {
     entries,
     loaded,
@@ -123,5 +138,6 @@ export const useConfigStore = defineStore('config', () => {
     get,
     getOr,
     set,
+    enableAutoLogin,
   }
 })

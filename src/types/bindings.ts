@@ -44,6 +44,65 @@ async ping(message: string) : Promise<Result<string, CommandError>> {
 }
 },
 /**
+ * Try to restore a previously saved session.
+ * 
+ * This command:
+ * 1. Loads the persisted session from disk.
+ * 2. Checks if it has expired.
+ * 3. Creates a `BeanfunClient` and injects the saved session token.
+ * 4. Calls `ping()` to verify the session is still valid on the server.
+ * 5. If valid, sets up `AppState::auth` and starts the ping loop.
+ * 
+ * # Returns
+ * 
+ * - `Success` — Session restored, user is logged in.
+ * - `SessionExpired` — Session file missing, expired, or ping failed.
+ * - `Error` — Unexpected error during restore.
+ */
+async tryRestoreSession() : Promise<Result<AutoLoginResult, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("try_restore_session") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Attempt to auto-login using saved credentials from Users.dat.
+ * 
+ * This command:
+ * 1. Loads Users.dat and finds an account with `auto_login=true` and non-empty password.
+ * 2. If found, attempts to log in using the saved credentials.
+ * 3. On success, saves the new session to disk.
+ * 
+ * # Returns
+ * 
+ * - `Success` — Login succeeded, session saved.
+ * - `NoCredentials` — No account with auto-login enabled.
+ * - `RequiresTotp` — Login requires TOTP (account_id included).
+ * - `RequiresVerify` — Login requires advance verification.
+ * - `Error` — Login failed with error message.
+ */
+async autoLogin() : Promise<Result<AutoLoginResult, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("auto_login") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Clear the saved session (called on logout).
+ */
+async clearSavedSession() : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("clear_saved_session") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
  * TW / HK regular username+password login.
  * 
  * # Protocol
@@ -484,6 +543,8 @@ async submitVerify(verifyCode: string, captchaCode: string) : Promise<Result<Ver
  * After this command returns, every subsequent command that
  * calls `require_auth` / reads a pending slot will surface its
  * typed "not started" / "session_required" error.
+ * - Clears the persisted session file (Session.dat) so the next
+ * app start won't attempt auto-restore.
  * 
  * # Idempotence
  * 
@@ -1114,6 +1175,8 @@ async setActiveService(serviceCode: string, serviceRegion: string) : Promise<Res
  * # Errors
  * 
  * - `auth.session_required` — no login is active.
+ * - `otp.rate_limit_exceeded` — too many OTP requests for this account.
+ * Wait 60 seconds before trying again.
  * - Any [`LoginError`][le] surfaced by the service (transport,
  * JSON parse, WCDES decrypt, server-side intResult ≠ 1). The
  * P10.1 `From<LoginError>` impl maps each variant to its
@@ -1813,6 +1876,30 @@ async autoPaste(req: AutoPasteRequest) : Promise<Result<null, CommandError>> {
 }
 },
 /**
+ * Open a file dialog for the user to select the game executable.
+ * 
+ * # Contract
+ * 
+ * Uses Tauri v2's dialog plugin. Returns the selected path or `None`
+ * if the user cancelled the dialog.
+ * 
+ * # Platform
+ * 
+ * Cross-platform — the dialog is handled by the OS native file picker.
+ * 
+ * # Errors
+ * 
+ * - `launcher.dialog_failed` — the dialog could not be opened.
+ */
+async selectGameExecutable() : Promise<Result<string | null, CommandError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("select_game_executable") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
  * Fetch the per-region INI of executable metadata + the ordered
  * list of game services for the active session's region.
  * 
@@ -2252,6 +2339,34 @@ export type AmountLimitNotice =
  * `I18n.ToSimplified`) or display as-is.
  */
 { kind: "other"; data: string }
+/**
+ * Result of trying to restore or auto-login.
+ */
+export type AutoLoginResult = 
+/**
+ * Session restored or login succeeded — user is now authenticated.
+ */
+{ type: "success" } | 
+/**
+ * Session expired or ping failed — need to re-authenticate.
+ */
+{ type: "sessionExpired" } | 
+/**
+ * No saved session and no auto-login credentials available.
+ */
+{ type: "noCredentials" } | 
+/**
+ * Login requires TOTP verification.
+ */
+{ type: "requiresTotp"; account_id: string } | 
+/**
+ * Login requires advance verification (email/SMS).
+ */
+{ type: "requiresVerify"; account_id: string } | 
+/**
+ * Login failed with an error message.
+ */
+{ type: "error"; message: string }
 /**
  * IPC-shaped input for [`auto_paste`].
  * 

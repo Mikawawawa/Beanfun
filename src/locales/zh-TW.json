@@ -87,6 +87,9 @@
   "DisableHardwareAcceleration": "關閉硬體加速",
   "MsgRestartForHardwareAccelTitle": "需要重新啟動",
   "MsgRestartForHardwareAccel": "已變更硬體加速相關設定。請完全關閉 Beanfun 後再開啟，主視窗才會套用 WPF 軟體渲染。",
+  "settings": {
+    "autoLoginTip": "開啟後，程式啟動時將自動登入上次使用的帳號。會話資訊將加密儲存在本機。"
+  },
   "Game": "遊戲",
   "GamePath": "遊戲路徑",
   "TraditionalLoginMode": "傳統登入模式",

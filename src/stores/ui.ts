@@ -337,6 +337,7 @@ export const useUiStore = defineStore('ui', () => {
     setLoginMethod,
 
     applyAll,
+    applyDarkMode,
   }
 })
 

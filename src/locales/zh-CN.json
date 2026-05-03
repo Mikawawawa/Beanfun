@@ -75,7 +75,10 @@
   "MinimizeToTaskbar": "最小化到通知中心",
   "DisableHardwareAcceleration": "关闭硬件加速",
   "MsgRestartForHardwareAccelTitle": "需要重新启动",
-  "MsgRestartForHardwareAccel": "已变更硬件加速相关设置。请完全关闭 Beanfun 后再打开，主窗口才会套用 WPF 软件渲染。",
+  "MsgRestartForHardwareAccel": "已变更硬件加速相关设定。请完全关闭 Beanfun 后再开启，主窗口才会套用 WPF 软件渲染。",
+  "settings": {
+    "autoLoginTip": "开启后，程序启动时将自动登录上次使用的账号。会话信息将加密保存在本机。"
+  },
   "Game": "游戏",
   "GamePath": "游戏路径",
   "TraditionalLoginMode": "传统登录模式",

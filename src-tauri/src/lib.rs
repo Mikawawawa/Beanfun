@@ -342,13 +342,7 @@ pub fn run() {
                 .unwrap_or_default()
                 .eq_ignore_ascii_case("true");
 
-        let mut args = vec![
-            // Lock rendering to 1:1 physical pixels so the app layout
-            // is immune to Windows "Text size" / DPI scaling. The
-            // router's fitWindow compensates by dividing the logical
-            // window size by the OS scale factor.
-            "--force-device-scale-factor=1".to_string(),
-        ];
+        let mut args = vec![];
 
         if disable_hw_accel {
             args.push("--disable-gpu".to_string());
@@ -360,7 +354,7 @@ pub fn run() {
     }
 
     let app_state = AppState::new(storage_root);
-    let specta_builder = commands::build_specta_builder::<tauri::Wry>();
+    let specta_builder = commands::build_specta_builder();
     export_specta_bindings(&specta_builder);
     let invoke_handler = specta_builder.invoke_handler();
 

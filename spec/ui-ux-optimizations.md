@@ -6,6 +6,67 @@
 2. 提升信息层次清晰度
 3. 改进加载状态体验
 4. 优化窗口自适应
+5. 统一 Vercel 风格设计
+
+## Vercel 风格设计规范
+
+### 颜色系统
+
+```css
+:root {
+  /* 主色调 */
+  --v-color-primary: #000000;
+  --v-color-primary-hover: #333333;
+  --v-color-primary-light: rgba(0, 0, 0, 0.08);
+
+  /* 背景色 */
+  --v-bg-primary: #ffffff;
+  --v-bg-secondary: #fafafa;
+  --v-bg-tertiary: #f5f5f5;
+
+  /* 边框色 */
+  --v-border-primary: #eaeaea;
+  --v-border-secondary: #d1d5db;
+  --v-border-hover: #000000;
+
+  /* 文字色 */
+  --v-text-primary: #111827;
+  --v-text-secondary: #333333;
+  --v-text-tertiary: #666666;
+  --v-text-muted: #999999;
+
+  /* 功能色 */
+  --v-success: #22c55e;
+  --v-warning: #f59e0b;
+  --v-error: #ef4444;
+}
+```
+
+### 圆角规范
+
+- 小元素（按钮、输入框）: 6px
+- 中等元素（卡片、弹窗）: 8px
+- 大元素（页面容器）: 12px
+
+### 动画规范
+
+- 时长: 200-300ms
+- 缓动函数: ease-out 或 cubic-bezier(0.4, 0, 0.2, 1)
+- 属性: 优先使用 transform 和 opacity
+
+### 按钮样式
+
+**主要按钮 (Primary)**:
+- 背景: #000000
+- 文字: #ffffff
+- 圆角: 6px
+- Hover: 背景 #333333
+
+**次要按钮 (Secondary)**:
+- 背景: #ffffff
+- 边框: 1px solid #eaeaea
+- 文字: #333333
+- Hover: 边框 #000000
 
 ## 优化内容
 
@@ -112,11 +173,11 @@ const limitNoticeText = computed<string | null>(() => {
 function attachObserver(): void {
   const root = document.querySelector('[data-window-root]')
   const content = root.querySelector('[data-window-content]')
-  
+
   observer = new ResizeObserver(() => {
     scheduleOnNextPaint(fitWindow)
   })
-  
+
   observer.observe(root)
   if (content) observer.observe(content)
 }
@@ -130,7 +191,7 @@ window.addEventListener('resize', handleWindowResize)
 
 async function toggleGameCard(serviceCode: string, serviceRegion: string) {
   // ... 切换逻辑
-  
+
   // 等待 DOM 更新后触发窗口调整
   await nextTick()
   window.dispatchEvent(new Event('resize'))
@@ -188,6 +249,149 @@ async function toggleGameCard(serviceCode: string, serviceRegion: string) {
 - 多账号游戏结构分明
 - 减少用户视线移动
 
+### 5. 空状态优化 (Vercel 风格)
+
+#### 设计规范
+
+空状态遵循 Vercel 风格：
+
+```
+[图标 - 灰色]
+[标题 - 深灰色]
+[描述文字 - 浅灰色]
+[操作按钮 - 黑色背景]
+```
+
+#### 实现
+
+```vue
+<!-- 无游戏空状态 -->
+<div class="account-list__empty-vercel">
+  <div class="empty-icon-vercel">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+      <line x1="12" y1="8" x2="12" y2="16"/>
+      <line x1="8" y1="12" x2="16" y2="12"/>
+    </svg>
+  </div>
+  <h3 class="empty-title-vercel">{{ t('accountList.noGamesTitle') }}</h3>
+  <p class="empty-desc-vercel">{{ t('accountList.noGamesDesc') }}</p>
+  <button class="empty-action-btn-vercel" @click="handleOpenAddGame">
+    <el-icon><Plus /></el-icon>
+    {{ t('accountList.addFirstGame') }}
+  </button>
+</div>
+```
+
+**样式**:
+
+```css
+.account-list__empty-vercel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 3rem;
+  background: #fafafa;
+  border: 1px dashed #eaeaea;
+  border-radius: 8px;
+}
+
+.empty-icon-vercel {
+  width: 64px;
+  height: 64px;
+  color: #999999;
+}
+
+.empty-title-vercel {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #333333;
+  margin: 0;
+}
+
+.empty-desc-vercel {
+  font-size: 0.875rem;
+  color: #666666;
+  margin: 0;
+  text-align: center;
+  max-width: 300px;
+}
+
+.empty-action-btn-vercel {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  background: #000000;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.empty-action-btn-vercel:hover {
+  background: #333333;
+}
+```
+
+### 6. 动画效果
+
+#### 卡片展开/收起动画
+
+```css
+/* 卡片展开/收起动画 */
+.card-expand-enter-active,
+.card-expand-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  max-height: 1000px;
+  opacity: 1;
+  overflow: hidden;
+}
+
+.card-expand-enter-from,
+.card-expand-leave-to {
+  max-height: 0;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+```
+
+#### 按钮交互动画
+
+```css
+/* 按钮点击动画 */
+.launch-btn-compact:active {
+  transform: scale(0.96);
+}
+
+.header-btn:active {
+  transform: scale(0.92);
+}
+
+/* 账号卡片选中动画 */
+.account-card-vercel {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.account-card-vercel:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
+
+.account-card-vercel.is-selected {
+  border-color: #000000;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
+```
+
 ## 设计原则
 
 ### 简洁性
@@ -198,7 +402,7 @@ async function toggleGameCard(serviceCode: string, serviceRegion: string) {
 
 ### 一致性
 
-- 统一的按钮样式
+- 统一的按钮样式（Vercel 风格）
 - 统一的间距和圆角
 - 统一的色彩系统
 
@@ -208,6 +412,12 @@ async function toggleGameCard(serviceCode: string, serviceRegion: string) {
 - 操作结果反馈
 - 错误提示友好
 
+### 可访问性
+
+- 支持键盘导航
+- 快捷键提示
+- 清晰的视觉层次
+
 ## 相关文件
 
 | 文件 | 说明 |
@@ -216,6 +426,9 @@ async function toggleGameCard(serviceCode: string, serviceRegion: string) {
 | `src/components/GameCardFull.vue` | 游戏卡片组件 |
 | `src/components/GameAccountCard.vue` | 游戏账号聚合卡片 |
 | `src/router/index.ts` | 窗口自适应逻辑 |
+| `src/styles/vercel-theme.css` | Vercel 风格 CSS 变量 |
+| `src/components/common/VercelButton.vue` | Vercel 风格按钮组件 |
+| `src/components/common/EmptyState.vue` | 空状态组件 |
 
 ## 变更历史
 
@@ -223,3 +436,8 @@ async function toggleGameCard(serviceCode: string, serviceRegion: string) {
   - 单账号游戏提示简化
   - 加载状态改进
   - 窗口自适应优化
+- 2024-XX: Vercel 风格统一
+  - 添加 CSS 变量系统
+  - 统一按钮样式
+  - 优化空状态设计
+  - 添加动画效果

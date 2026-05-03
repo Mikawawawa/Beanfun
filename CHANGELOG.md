@@ -36,6 +36,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 添加 TOTP 倒計時同步顯示
 - 改進自動 OTP 粘貼邏輯
 
+#### 鍵盤快捷鍵支持
+- 新增 `useKeyboardShortcuts.ts` composable，統一管理快捷鍵
+- 全局快捷鍵：
+  - `Ctrl/Cmd + N`: 添加新遊戲
+  - `Ctrl/Cmd + R`: 刷新賬號列表
+  - `Ctrl/Cmd + ,`: 打開設置
+  - `Esc`: 關閉彈窗/收起卡片
+- 卡片內快捷鍵：
+  - `Esc`: 收起卡片
+  - `L`: 啟動遊戲
+  - `O`: 獲取 OTP
+  - `C`: 複製 OTP
+  - `↑/↓`: 切換選中賬號
+- 支持 Mac (Cmd) 和 Windows/Linux (Ctrl) 平台適配
+
+#### Vercel 風格界面統一
+- 統一按鈕樣式：黑色背景 (#000000) 主要按鈕，白色背景次要按鈕
+- 統一圓角規範：6-8px
+- 添加動畫效果：卡片展開/收起、按鈕交互
+- 優化空狀態設計：圖標 + 標題 + 描述 + 操作按鈕
+
 ### Changed
 
 - 重構 `AccountList.vue`，移除原有的分散式布局，改用卡片列表
@@ -49,11 +70,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `src/services/gamePath.ts` - 遊戲路徑管理服務
 
 #### 修改文件
-- `src/pages/AccountList.vue` - 重構為卡片列表布局
+- `src/pages/AccountList.vue` - 重構為卡片列表布局，添加快捷鍵支持
+- `src/components/GameCardFull.vue` - 添加卡片內快捷鍵支持
 - `src-tauri/src/commands/otp.rs` - 添加 OTP 速率限制
 - `src-tauri/src/commands/launcher.rs` - 添加選擇遊戲可執行文件命令
 - `src-tauri/src/commands/mod.rs` - 註冊新命令
 - `src/router/index.ts` - 添加窗口大小調整事件監聽
+- `spec/ui-ux-optimizations.md` - 添加 Vercel 風格設計規範
+- `spec/interaction-improvements.md` - 添加快捷鍵支持文檔
 
 ## [Original] - 2024-XX-XX
 

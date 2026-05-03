@@ -55,7 +55,9 @@ export async function getPath(
     ini.dir_reg,
   )
 
+  console.log('detectGamePath result:', result)
   const path = result.status === 'ok' ? result.data : null
+  console.log('Extracted path:', path)
 
   cache.set(key, {
     path,

@@ -87,6 +87,9 @@
   "DisableHardwareAcceleration": "Disable hardware acceleration",
   "MsgRestartForHardwareAccelTitle": "Restart required",
   "MsgRestartForHardwareAccel": "Hardware acceleration settings have changed. Fully exit Beanfun and start it again for the main window to use WPF software rendering.",
+  "settings": {
+    "autoLoginTip": "When enabled, the app will automatically log in with the last used account on startup. Session info will be encrypted and stored locally."
+  },
   "Game": "Game",
   "GamePath": "Game Path",
   "TraditionalLoginMode": "Traditional Login Mode",

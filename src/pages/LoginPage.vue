@@ -108,7 +108,7 @@ function handleOpenAbout(): void {
   place-items: center;
   border-radius: 6px;
   cursor: pointer;
-  color: #666666;
+  color: var(--bf-text-tertiary);
   transition: background 150ms ease;
   padding: 0;
 }
@@ -116,13 +116,13 @@ function handleOpenAbout(): void {
   font-size: 18px;
 }
 .login-shell__action-btn:hover {
-  background: #f5f5f5;
+  background: var(--bf-bg-secondary);
 }
 
 .login-shell__region-btn {
   appearance: none;
-  background: #f5f5f5;
-  border: 1px solid #e5e5e5;
+  background: var(--bf-bg-secondary);
+  border: 1px solid var(--bf-border);
   height: 26px;
   display: inline-flex;
   align-items: center;
@@ -130,7 +130,7 @@ function handleOpenAbout(): void {
   padding: 0 0.5rem 0 0.25rem;
   border-radius: 6px;
   cursor: pointer;
-  color: #000000;
+  color: var(--bf-text-primary);
   font: inherit;
   font-size: 11px;
   font-weight: 600;
@@ -140,7 +140,7 @@ function handleOpenAbout(): void {
   font-size: 14px;
 }
 .login-shell__region-btn:hover {
-  background: #efefef;
+  background: var(--bf-bg-tertiary);
 }
 
 /* Page transition animations */

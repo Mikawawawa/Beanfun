@@ -101,13 +101,12 @@
  * `loginPage`).
  */
 
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import {
   ElButton,
   ElCheckbox,
-  ElColorPicker,
   ElIcon,
   ElInput,
   ElMessage,
@@ -128,8 +127,9 @@ import { open as openFileDialog } from '@tauri-apps/plugin-dialog'
 
 import { useAuthStore } from '../stores/auth'
 import { useConfigStore } from '../stores/config'
-import { useGameStore } from '../stores/game'
+import { useGameStore, gameCodeOf } from '../stores/game'
 import { useUiStore, type AppLocale, type LoginMethodValue, type UpdateChannel } from '../stores/ui'
+import type { GameService } from '../types/bindings'
 import { TOOLS_GAME_CODES } from '../constants/tools'
 import ToolsDialogStack from '../windows/ToolsDialogStack.vue'
 import TitleBar from '../components/TitleBar.vue'
@@ -249,38 +249,6 @@ async function handleLoginMethodChange(
   await ui.setLoginMethod(value)
 }
 
-/**
- * ThemeColor change handler — wired to both the free-form
- * `el-input` (for typing hex / WPF named colors) and the
- * `el-color-picker` swatch (for visual selection).
- *
- * Empty / null values from `el-color-picker` (when the user
- * clears the swatch) are coerced back to {@link ui.themeColor}
- * to avoid persisting an empty string into Config.xml that
- * `setPrimaryColor` would then reject. Mirrors WPF
- * `cb_ThemeColor_TextChanged`'s try/catch around the
- * `changeThemeColor` call (L246-251) — a malformed hex throws
- * and we silently keep the previous value.
- */
-async function handleThemeColorChange(value: string | null): Promise<void> {
-  const next = (value ?? '').trim()
-  if (next === '') return
-  try {
-    await ui.setThemeColor(next)
-  } catch {
-    /*
-     * `setPrimaryColor` throws `RangeError` for a malformed hex
-     * (and the WPF named-color alias table only covers 6 known
-     * names — anything else falls through to the `parseHexColor`
-     * raise). WPF L249 also `catch { }` on bad input; mirroring
-     * here keeps the input field showing what the user typed
-     * without persisting it (and without surfacing a red toast
-     * that would be more confusing than helpful for a typed-mid-
-     * input partial value like `#FF`).
-     */
-  }
-}
-
 function handleManageAccount(): void {
   void router.push('/manage-account')
 }
@@ -312,8 +280,8 @@ const gamePath = ref<string>('')
  * is constructed so a future schema change is a one-line edit.
  */
 function gamePathConfigKey(): string | null {
-  const ini = game.selectedIni
-  const code = game.selectedGameCode
+  const ini = settingsSelectedIni.value
+  const code = settingsSelectedGameCode.value
   if (!ini || code === null || ini.dir_value_name === '') return null
   return `${ini.dir_value_name}.${code}`
 }
@@ -385,15 +353,15 @@ function refreshGamePathFromConfig(): void {
  * second toast would double-fire the user-visible noise.
  */
 async function pickGamePath(): Promise<void> {
-  const ini = game.selectedIni
-  const code = game.selectedGameCode
-  const selected = game.selectedGame
+  const ini = settingsSelectedIni.value
+  const code = settingsSelectedGameCode.value
+  const selected = settingsSelectedGame.value
   const key = gamePathConfigKey()
 
   if (!ini || !selected || code === null || key === null) {
     /*
      * Defensive: the click handler is gated on
-     * `v-if="game.selectedGame"` at the template level, so this
+     * `v-if="settingsSelectedGame"` at the template level, so this
      * branch should be unreachable. Surface a structured warning
      * if it ever runs (e.g. a race where the user clicks during
      * a game-switch transition) so we know the gate slipped.
@@ -496,6 +464,103 @@ const showToolsButton = computed<boolean>(() => {
   return TOOLS_GAME_CODES.has(game.selectedGameCode)
 })
 
+/* --------------- Game selection for settings --------------- */
+
+// 已添加的游戏代码列表
+const addedGameCodes = ref<string[]>([])
+
+// 计算属性：已添加的游戏列表
+// 优先从 game.services 获取完整信息（登录状态）
+// 如果 game.services 为空（未登录状态），尝试从缓存恢复，最后构造最小游戏对象
+const addedGames = computed(() => {
+  // 确保有游戏数据（尝试从缓存恢复）
+  if (game.services.length === 0) {
+    game.restoreFromCache(configStore)
+  }
+
+  if (game.services.length > 0) {
+    // 有缓存或已登录：从 game.services 过滤
+    return game.services.filter(g => {
+      const code = gameCodeOf(g.service_code, g.service_region)
+      return addedGameCodes.value.includes(code)
+    })
+  }
+
+  // 无缓存：从 addedGameCodes 构造最小游戏对象
+  return addedGameCodes.value.map(code => {
+    const [serviceCode, serviceRegion] = code.split('_')
+    return {
+      service_code: serviceCode ?? code,
+      service_region: serviceRegion ?? '',
+      name: code, // 使用 gameCode 作为名称
+      // 其他字段使用空值或默认值
+      service_family_name: '',
+      service_family_name_en: '',
+      service_type: '',
+      xlarge_image_name: '',
+      large_image_name: '',
+      small_image_name: '',
+      website_url: '',
+      download_url: '',
+    } as GameService
+  })
+})
+
+// 当前设置中选中的游戏代码
+const settingsSelectedGameCode = ref<string | null>(null)
+
+// 当前设置中选中的游戏
+const settingsSelectedGame = computed(() => {
+  if (settingsSelectedGameCode.value === null) return null
+  return game.services.find(g => {
+    const code = gameCodeOf(g.service_code, g.service_region)
+    return code === settingsSelectedGameCode.value
+  }) ?? null
+})
+
+// 当前设置中选中的游戏 INI
+const settingsSelectedIni = computed(() => {
+  if (settingsSelectedGameCode.value === null) return null
+  return game.ini[settingsSelectedGameCode.value] ?? null
+})
+
+// 加载已添加的游戏列表
+function loadAddedGames(): void {
+  const saved = configStore.get('addedGames')
+  if (saved) {
+    try {
+      addedGameCodes.value = JSON.parse(saved) as string[]
+    } catch {
+      addedGameCodes.value = []
+    }
+  } else {
+    addedGameCodes.value = []
+  }
+}
+
+// 处理游戏选择变化
+function handleGameSelectionChange(gameCode: string | null): void {
+  if (gameCode) {
+    const selectedGame = game.services.find(g => {
+      const code = gameCodeOf(g.service_code, g.service_region)
+      return code === gameCode
+    })
+    if (selectedGame) {
+      // 更新 game store 中的选中游戏
+      game.selectGame(selectedGame.service_code, selectedGame.service_region)
+      // 刷新游戏路径显示
+      refreshGamePathFromConfig()
+    }
+  }
+}
+
+// 监听 game store 中的选中游戏变化，同步到设置页面的选择器
+watch(() => game.selectedGameCode, (newCode) => {
+  if (newCode && !settingsSelectedGameCode.value) {
+    settingsSelectedGameCode.value = newCode
+  }
+})
+
 /**
  * Imperative handle to the {@link ToolsDialogStack} mounted at
  * the bottom of the template. Same pattern as the AccountList
@@ -524,7 +589,7 @@ const toolsDialogRef = ref<InstanceType<typeof ToolsDialogStack> | null>(null)
  * fire-and-forget rationale.
  */
 function handleTools(): void {
-  const code = game.selectedGameCode
+  const code = settingsSelectedGameCode.value
   if (code === null) return
   void toolsDialogRef.value?.openForGame(code)
 }
@@ -594,7 +659,34 @@ function handleBack(): void {
 /* --------------- mount --------------- */
 
 onMounted(() => {
-  refreshGamePathFromConfig()
+  loadAddedGames()
+
+  // 尝试从缓存恢复游戏数据（用于未登录状态）
+  if (game.services.length === 0) {
+    game.restoreFromCache(configStore)
+  }
+
+  // 初始化设置页面的选中游戏
+  if (game.selectedGameCode) {
+    settingsSelectedGameCode.value = game.selectedGameCode
+  } else if (addedGameCodes.value.length > 0) {
+    // 如果没有选中的游戏，默认选择第一个已添加的游戏
+    const firstCode = addedGameCodes.value[0]
+    settingsSelectedGameCode.value = firstCode
+    // 尝试从缓存的服务中找到对应游戏并设置
+    const cachedGame = game.services.find(g => {
+      const code = gameCodeOf(g.service_code, g.service_region)
+      return code === firstCode
+    })
+    if (cachedGame) {
+      game.selectGame(cachedGame.service_code, cachedGame.service_region)
+    }
+  }
+
+  // 确保在选中游戏设置完成后再刷新路径
+  nextTick(() => {
+    refreshGamePathFromConfig()
+  })
 })
 </script>
 
@@ -668,17 +760,6 @@ onMounted(() => {
                 </el-select>
               </div>
 
-              <div class="settings__row">
-                <label class="settings__label">{{ t('ThemeColor') }}</label>
-                <div class="settings__theme-row">
-                  <el-color-picker
-                    :model-value="ui.themeColor"
-                    data-test="settings-theme-picker"
-                    @change="handleThemeColorChange"
-                  />
-                </div>
-              </div>
-
               <div class="settings__row settings__row--checkbox">
                 <el-checkbox
                   :model-value="ui.darkMode"
@@ -711,7 +792,7 @@ onMounted(() => {
               </div>
             </div>
 
-            <!-- Right column: 4 boolean checkboxes (D4) -->
+            <!-- Right column: 5 boolean checkboxes (D4) -->
             <div class="settings__col">
               <div class="settings__row settings__row--checkbox">
                 <el-checkbox
@@ -758,13 +839,29 @@ onMounted(() => {
                   </el-checkbox>
                 </el-tooltip>
               </div>
+
+              <div class="settings__row settings__row--checkbox">
+                <el-tooltip
+                  placement="right"
+                  popper-class="settings__tip-popper"
+                  :content="t('settings.autoLoginTip')"
+                >
+                  <el-checkbox
+                    :model-value="configStore.enableAutoLogin"
+                    data-test="settings-auto-login"
+                    @change="(value) => configStore.enableAutoLogin = Boolean(value)"
+                  >
+                    {{ t('AutoLogin') }}
+                  </el-checkbox>
+                </el-tooltip>
+              </div>
             </div>
           </div>
         </section>
 
         <!-- Game section (D5) — only when a game is selected (WPF parity: if no game, t_GamePath is empty + the section is uninteractive). -->
         <section
-          v-if="game.selectedGame"
+          v-if="addedGames.length > 0"
           class="settings__section"
           data-test="settings-game-section"
         >
@@ -772,6 +869,26 @@ onMounted(() => {
             <el-icon><Operation /></el-icon>
             <span>{{ t('Game') }}</span>
           </header>
+
+          <!-- 游戏 Tab 切换 -->
+          <div class="settings__game-tabs">
+            <button
+              v-for="g in addedGames"
+              :key="gameCodeOf(g.service_code, g.service_region)"
+              class="settings__game-tab"
+              :class="{ 'is-active': settingsSelectedGameCode === gameCodeOf(g.service_code, g.service_region) }"
+              @click="handleGameSelectionChange(gameCodeOf(g.service_code, g.service_region))"
+            >
+              <img
+                v-if="g.large_image_name"
+                :src="g.large_image_name.startsWith('http') ? g.large_image_name : `https://images.beanfun.com/GameZone/${g.large_image_name}`"
+                :alt="g.name"
+                class="settings__game-tab-image"
+                @error="($event.target as HTMLImageElement).style.display='none'"
+              />
+              <span class="settings__game-tab-name">{{ g.name }}</span>
+            </button>
+          </div>
 
           <div class="settings__grid">
             <div class="settings__row">
@@ -842,7 +959,7 @@ onMounted(() => {
                   </el-tooltip>
                 </div>
 
-                <div v-if="showToolsButton" class="settings__row" data-test="settings-tools-row">
+                <div v-if="showToolsButton && settingsSelectedGameCode" class="settings__row" data-test="settings-tools-row">
                   <!--
                   P12.5 D7: WPF parity gate — the Tools button is only
                   rendered for the three tools-bearing game codes
@@ -865,14 +982,14 @@ onMounted(() => {
           </div>
         </section>
 
-        <!-- Game section empty banner (no selected game) — informational, mirrors WPF's empty t_GamePath fallback semantically. -->
+        <!-- Game section empty banner (no added games) — informational, mirrors WPF's empty t_GamePath fallback semantically. -->
         <section
           v-else
           class="settings__section settings__section--empty"
           data-test="settings-game-section-empty"
         >
           <el-icon class="settings__empty-icon" :size="20"><InfoFilled /></el-icon>
-          <p class="settings__empty-text">{{ t('settings.gameSectionEmpty') }}</p>
+          <p class="settings__empty-text">{{ t('settings.noGamesAdded') }}</p>
         </section>
 
         <!-- Footer: Back button -->
@@ -933,8 +1050,8 @@ onMounted(() => {
   width: 40px;
   height: 40px;
   border-radius: 10px;
-  background: #f3f4f6;
-  color: #374151;
+  background: var(--bf-bg-secondary);
+  color: var(--bf-text-secondary);
   display: grid;
   place-items: center;
   flex-shrink: 0;
@@ -950,13 +1067,13 @@ onMounted(() => {
   font-weight: 500;
   letter-spacing: -0.01em;
   line-height: 1.15;
-  color: #171717;
+  color: var(--bf-text-primary);
 }
 
 .settings__subline {
   margin: 0.25rem 0 0;
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--bf-text-tertiary);
 }
 
 /* --------------- section --------------- */
@@ -966,8 +1083,8 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  background: #fff;
-  border: 1px solid #e5e7eb;
+  background: var(--bf-bg-primary);
+  border: 1px solid var(--bf-border);
   border-radius: 8px;
 }
 
@@ -977,9 +1094,9 @@ onMounted(() => {
   gap: 0.5rem;
   font-size: 0.875rem;
   font-weight: 500;
-  color: #6b7280;
+  color: var(--bf-text-tertiary);
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--bf-border);
 }
 
 .settings__section--empty {
@@ -987,18 +1104,68 @@ onMounted(() => {
   align-items: center;
   gap: 0.625rem;
   padding: 0.875rem 1rem;
-  background: #f9fafb;
+  background: var(--bf-bg-secondary);
 }
 
 .settings__empty-icon {
   flex-shrink: 0;
-  color: #9ca3af;
+  color: var(--bf-text-disabled);
 }
 
 .settings__empty-text {
   margin: 0;
   font-size: 0.8125rem;
-  color: #6b7280;
+  color: var(--bf-text-tertiary);
+}
+
+/* --------------- game tabs --------------- */
+
+.settings__game-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.settings__game-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--bf-bg-secondary);
+  border: 1px solid var(--bf-border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.settings__game-tab:hover {
+  background: var(--bf-bg-tertiary);
+  border-color: var(--bf-border-hover);
+}
+
+.settings__game-tab.is-active {
+  background: var(--el-color-primary-light-9);
+  border-color: var(--el-color-primary);
+  box-shadow: 0 0 0 2px var(--el-color-primary-light-8);
+}
+
+.settings__game-tab-image {
+  width: 32px;
+  height: 32px;
+  object-fit: cover;
+  border-radius: 4px;
+  background: var(--bf-bg-tertiary);
+}
+
+.settings__game-tab-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--bf-text-secondary);
+}
+
+.settings__game-tab.is-active .settings__game-tab-name {
+  color: var(--el-color-primary);
 }
 
 /* --------------- grid / row --------------- */
@@ -1041,7 +1208,7 @@ onMounted(() => {
 
 .settings__label {
   font-size: 0.8125rem;
-  color: #374151;
+  color: var(--bf-text-secondary);
   font-weight: 450;
 }
 
@@ -1070,7 +1237,7 @@ onMounted(() => {
 }
 
 .settings__game-path-icon {
-  color: #9ca3af;
+  color: var(--bf-text-disabled);
 }
 
 /* --------------- footer --------------- */

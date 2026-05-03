@@ -105,10 +105,11 @@
 import { computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElButton, ElDialog, ElIcon } from 'element-plus'
-import { CircleClose, Refresh, VideoPlay, Warning } from '@element-plus/icons-vue'
+import { CircleClose, Refresh, Warning } from '@element-plus/icons-vue'
 
-import { useGameStore, imageUrl, gameCodeOf } from '../stores/game'
+import { useGameStore, gameCodeOf } from '../stores/game'
 import type { GameService, LoginRegion } from '../types/bindings'
+import GameLogo from '../components/GameLogo.vue'
 
 /*
  * Registered name is `GameListDialog` (not `GameList`) to satisfy
@@ -241,16 +242,7 @@ function handleRetry(): void {
   void game.loadGames(true)
 }
 
-function bannerUrl(s: GameService): string {
-  /*
-   * `large_image_name` matches the field WPF's `GameList.xaml.cs`
-   * passes to `Game.image` (`game.Large_image`). Empty image name
-   * resolves to the bare base URL (404 in the WebView), which
-   * `<img>` will render as a broken-image icon — matching WPF's
-   * empty `Image.Source` behaviour (no fallback).
-   */
-  return imageUrl(s.large_image_name, props.region)
-}
+
 </script>
 
 <template>
@@ -354,11 +346,14 @@ function bannerUrl(s: GameService): string {
           @keyup.enter="handlePick(svc)"
           @keyup.space.prevent="handlePick(svc)"
         >
-          <img
+          <GameLogo
+            :service-code="svc.service_code"
+            :service-region="svc.service_region"
+            :name="svc.name"
+            :image-name="svc.large_image_name"
+            size="large"
+            shape="square"
             class="game-list__item-image"
-            :src="bannerUrl(svc)"
-            :alt="t('gameList.imageAlt', { name: svc.name })"
-            loading="lazy"
             :data-test="`game-list-image-${svc.service_code}_${svc.service_region}`"
           />
           <span

@@ -168,13 +168,17 @@ export function gameCodeOf(serviceCode: string, serviceRegion: string): string {
  */
 export function imageUrl(name: string, region: LoginRegion): string {
   if (!name) return ''
-  if (name.startsWith('http://') || name.startsWith('https://')) {
+  // 确保使用 HTTPS，避免混合内容问题
+  if (name.startsWith('http://')) {
+    return name.replace('http://', 'https://')
+  }
+  if (name.startsWith('https://')) {
     return name
   }
   const base =
     region === 'TW'
       ? 'https://images.beanfun.com/GameZone/'
-      : 'http://hk.images.beanfun.com/uploaded_images/beanfun/game_zone/'
+      : 'https://hk.images.beanfun.com/uploaded_images/beanfun/game_zone/'
   return `${base}${name}`
 }
 
@@ -260,13 +264,28 @@ export const useGameStore = defineStore('game', () => {
    * action plus tests) goes through this helper so future field
    * additions to `GameInfoBundle` land in one place (DRY).
    *
+   * Also caches the services list and INI data to Config.xml for
+   * offline/unauthenticated display in Settings page.
+   *
    * [cmd]: ../types/bindings.ts
    */
-  function applyBundle(bundle: GameInfoBundle): void {
+  async function applyBundle(bundle: GameInfoBundle): Promise<void> {
     ini.value = { ...bundle.ini } as Record<string, GameIniEntry>
     services.value = bundle.services
     loadState.value = 'loaded'
     loadError.value = null
+
+    // Cache services and INI to Config.xml for unauthenticated display
+    try {
+      const { useConfigStore } = await import('./config')
+      const config = useConfigStore()
+      await Promise.all([
+        config.set('cachedGameServices', JSON.stringify(bundle.services)),
+        config.set('cachedGameIni', JSON.stringify(bundle.ini)),
+      ])
+    } catch {
+      // Best-effort caching — don't fail if config store isn't available
+    }
   }
 
   /**
@@ -313,7 +332,7 @@ export const useGameStore = defineStore('game', () => {
 
     const result = await safeInvoke(commands.listGames())
     if (result.ok) {
-      applyBundle(result.data)
+      await applyBundle(result.data)
       return
     }
     loadError.value = result.error.message
@@ -460,6 +479,55 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
+   * Restore game services and INI data from cached Config.xml entry.
+   * Used in Settings page when user is not authenticated but
+   * wants to see their added games and game paths.
+   *
+   * @param configStore — caller-injected config store instance
+   * @returns `true` if cache was restored, `false` otherwise
+   */
+  function restoreFromCache(configStore: { get: (key: string) => string | undefined }): boolean {
+    if (services.value.length > 0) return true // Already have data
+
+    const cachedServices = configStore.get('cachedGameServices')
+    const cachedIni = configStore.get('cachedGameIni')
+
+    let restored = false
+
+    // Restore services
+    if (cachedServices) {
+      try {
+        const parsed = JSON.parse(cachedServices) as GameService[]
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          services.value = parsed
+          restored = true
+        }
+      } catch {
+        // Invalid cache, ignore
+      }
+    }
+
+    // Restore INI data
+    if (cachedIni) {
+      try {
+        const parsed = JSON.parse(cachedIni) as Record<string, GameIniEntry>
+        if (parsed && Object.keys(parsed).length > 0) {
+          ini.value = parsed
+          restored = true
+        }
+      } catch {
+        // Invalid cache, ignore
+      }
+    }
+
+    if (restored) {
+      loadState.value = 'loaded'
+    }
+
+    return restored
+  }
+
+  /**
    * Wipe every piece of game-scoped state. Composed into
    * `main.ts::installRouterGuards.clearAccountSession` so the
    * session-expired bridge clears the catalogue alongside the
@@ -503,6 +571,7 @@ export const useGameStore = defineStore('game', () => {
     loadGames,
     selectGame,
     restoreLastSelected,
+    restoreFromCache,
     clearGameData,
   }
 })

@@ -132,6 +132,7 @@
 
 pub mod account;
 pub mod auth;
+pub mod auto_login;
 pub mod config;
 #[cfg(target_os = "windows")]
 pub mod cookie_native;
@@ -173,17 +174,18 @@ use tauri_specta::{collect_commands, Builder};
 /// sites in earlier Tauri prototypes; this helper is the structural
 /// fix so we don't repeat that mistake.
 ///
-/// # Why generic over `R: tauri::Runtime`?
+/// # Why pinned to `tauri::Wry`?
 ///
-/// Production code instantiates this as `build_specta_builder::<Wry>`
+/// Production code instantiates this as `build_specta_builder()`
 /// so the Tauri dispatcher lines up with the real webview runtime.
-/// Future mock-invoke integration tests (planned for P10.2+ once the
-/// first business-logic command gives a round-trip assertion a
-/// non-trivial payload to validate) are expected to instantiate this
-/// as `build_specta_builder::<tauri::test::MockRuntime>` to avoid
-/// pulling a full Wry runtime into the test harness. Keeping the
-/// helper generic today costs nothing and leaves that door open
-/// without forcing a later signature change.
+/// Previous versions kept this generic over `R: tauri::Runtime` to
+/// leave room for mock-invoke integration tests with
+/// `tauri::test::MockRuntime`, but the `collect_commands!` macro
+/// requires a single concrete type when commands mix concrete
+/// `AppHandle` and turbofish-pinned `::<tauri::Wry>` signatures.
+/// All commands in this codebase target `Wry` by default (Tauri 2's
+/// `AppHandle` type alias resolves to `AppHandle<Wry>`), so pinning
+/// the builder to `Wry` is zero-cost and avoids the type mismatch.
 ///
 /// # Adding a command
 ///
@@ -194,11 +196,15 @@ use tauri_specta::{collect_commands, Builder};
 ///    `src/types/bindings.ts`. Commit the regenerated
 ///    file alongside the Rust change; the `bindings_file_tests`
 ///    submodule (lib-test only) guards CI against accidental drift.
-pub fn build_specta_builder<R: tauri::Runtime>() -> Builder<R> {
-    Builder::<R>::new().commands(collect_commands![
+pub fn build_specta_builder() -> Builder<tauri::Wry> {
+    Builder::<tauri::Wry>::new().commands(collect_commands![
         // system (P10.1)
         system::version,
         system::ping,
+        // auth (auto-login)
+        auto_login::try_restore_session,
+        auto_login::auto_login,
+        auto_login::clear_saved_session,
         // auth (P10.2 — regular family)
         auth::login_regular,
         auth::login_totp,
@@ -435,6 +441,10 @@ mod bindings_file_tests {
         // --- P10.1 — system smoke ------------------------------------
         "version",
         "ping",
+        // --- auto-login ----------------------------------------------
+        "tryRestoreSession",
+        "autoLogin",
+        "clearSavedSession",
         // --- P10.2 — auth regular family -----------------------------
         "loginRegular",
         "loginTotp",

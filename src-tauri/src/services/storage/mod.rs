@@ -39,6 +39,7 @@ pub mod aes_backup;
 pub mod entropy;
 pub mod error;
 pub mod legacy;
+pub mod session_store;
 pub mod users_dat;
 
 #[cfg(target_os = "windows")]
@@ -50,6 +51,9 @@ pub use aes_backup::{
 pub use entropy::Entropy;
 pub use error::StorageError;
 pub use legacy::{migrate_legacy_payload, LegacyMigrateError};
+pub use session_store::{
+    clear_session, default_session_path, load_session, save_session, PersistedSession,
+};
 pub use users_dat::{export_records, parse_records, Account, Records};
 
 #[cfg(target_os = "windows")]

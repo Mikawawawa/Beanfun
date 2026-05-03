@@ -95,21 +95,21 @@
  * ========================================================================= */
 
 .bf-btn-gradient {
-  background: var(--bf-on-surface);
-  color: var(--bf-inverse-on-surface);
-  border: 1px solid var(--bf-on-surface);
-  border-radius: var(--bf-radius-button);
+  background: var(--bf-text-primary);
+  color: var(--bf-text-inverse);
+  border: 1px solid var(--bf-text-primary);
+  border-radius: var(--bf-radius-button, 6px);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
   transition:
-    background var(--bf-motion-fast),
-    box-shadow var(--bf-motion-fast),
-    transform var(--bf-motion-fast);
+    background var(--bf-motion-fast, 150ms),
+    box-shadow var(--bf-motion-fast, 150ms),
+    transform var(--bf-motion-fast, 150ms);
   cursor: pointer;
 }
 
 .bf-btn-gradient:hover {
-  background: var(--bf-on-surface-variant);
-  border-color: var(--bf-on-surface-variant);
+  background: var(--bf-text-secondary);
+  border-color: var(--bf-text-secondary);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   filter: none;
 }
@@ -126,36 +126,72 @@
   cursor: not-allowed;
 }
 
+/* Dark mode override for bf-btn-gradient */
+[data-theme="dark"] .bf-btn-gradient {
+  background: var(--bf-text-primary);
+  border-color: var(--bf-text-primary);
+  color: var(--bf-text-inverse);
+}
+
+[data-theme="dark"] .bf-btn-gradient:hover {
+  background: var(--bf-text-secondary);
+  border-color: var(--bf-text-secondary);
+  color: var(--bf-text-inverse);
+}
+
 .bf-btn-secondary {
-  background: var(--bf-surface);
-  border: 1px solid var(--bf-outline);
-  color: var(--bf-on-surface);
-  border-radius: var(--bf-radius-button);
+  background: var(--bf-bg-primary);
+  border: 1px solid var(--bf-border);
+  color: var(--bf-text-primary);
+  border-radius: var(--bf-radius-button, 6px);
   transition:
-    background var(--bf-motion-fast),
-    border-color var(--bf-motion-fast);
+    background var(--bf-motion-fast, 150ms),
+    border-color var(--bf-motion-fast, 150ms);
   cursor: pointer;
 }
 
 .bf-btn-secondary:hover {
-  background: var(--bf-surface-container-low);
-  border-color: var(--bf-on-surface-variant);
+  background: var(--bf-bg-secondary);
+  border-color: var(--bf-border-hover);
+}
+
+/* Dark mode override for bf-btn-secondary */
+[data-theme="dark"] .bf-btn-secondary {
+  background: var(--bf-bg-secondary);
+  border-color: var(--bf-border);
+  color: var(--bf-text-primary);
+}
+
+[data-theme="dark"] .bf-btn-secondary:hover {
+  background: var(--bf-bg-tertiary);
+  border-color: var(--bf-border-hover);
+  color: var(--bf-text-primary);
 }
 
 .bf-btn-ghost-icon {
   background: transparent;
   border: 1px solid transparent;
-  border-radius: var(--bf-radius-button);
-  color: var(--bf-on-surface-variant);
+  border-radius: var(--bf-radius-button, 6px);
+  color: var(--bf-text-tertiary);
   transition:
-    background var(--bf-motion-fast),
-    color var(--bf-motion-fast);
+    background var(--bf-motion-fast, 150ms),
+    color var(--bf-motion-fast, 150ms);
   cursor: pointer;
 }
 
 .bf-btn-ghost-icon:hover {
-  background: var(--bf-surface-container-low);
-  color: var(--bf-on-surface);
+  background: var(--bf-bg-secondary);
+  color: var(--bf-text-primary);
+}
+
+/* Dark mode override for bf-btn-ghost-icon */
+[data-theme="dark"] .bf-btn-ghost-icon {
+  color: var(--bf-text-tertiary);
+}
+
+[data-theme="dark"] .bf-btn-ghost-icon:hover {
+  background: var(--bf-bg-secondary);
+  color: var(--bf-text-primary);
 }
 
 /* =========================================================================
@@ -243,10 +279,7 @@
   -webkit-text-fill-color: transparent;
 }
 
-[data-theme='dark'] .bf-btn-gradient {
-  background: linear-gradient(135deg, var(--bf-primary-container) 0%, var(--bf-primary) 60%);
-  color: #ffffff;
-}
+/* Note: bf-btn-gradient dark mode is defined above with the main style */
 
 [data-theme='dark'] .bf-custom-scrollbar::-webkit-scrollbar-thumb {
   background-color: rgba(255, 255, 255, 0.2);

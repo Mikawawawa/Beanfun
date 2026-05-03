@@ -119,7 +119,7 @@ import { useAuthStore, AUTH_ACTIONS, type LoginIntent } from '../stores/auth'
 import { useConfigStore } from '../stores/config'
 import { LOGIN_EXTERNAL_URLS, LOGIN_METHOD, type LoginExternalUrlKind } from '../constants/login'
 import type { LoginRegion } from '../types/bindings'
-import { useGameLauncher } from '../composables/useGameLauncher'
+
 import { useInAppBrowser } from '../composables/useInAppBrowser'
 
 defineOptions({ name: 'IdPassForm' })
@@ -146,16 +146,7 @@ const router = useRouter()
 const auth = useAuthStore()
 const accountStore = useAccountStore()
 const config = useConfigStore()
-/*
- * P12.4 followup-A D7 — game-launcher composable for the
- * GameStart button (WPF `btn_StartGame_Click` /
- * `id-pass_form.xaml.cs` L297-300). The composable internally
- * calls `game.restoreLastSelected(config)` so the launch can
- * proceed even when the in-memory game store is empty (post-
- * logout LoginPage state). See `useGameLauncher` docblock for
- * the WPF parity table.
- */
-const launcher = useGameLauncher()
+
 /*
  * P12.4 followup-B B6 — in-app browser composable for the
  * RegisterAccount / ForgotPassword buttons (WPF
@@ -371,9 +362,6 @@ function handleForgotPassword(): void {
  * via `wrapCommand` toast / inline ElMessage. Wrapping in
  * `try/catch` here would only double-toast.
  */
-function handleGameStart(): void {
-  void launcher.runGame()
-}
 
 async function submit(): Promise<void> {
   /*
@@ -602,14 +590,6 @@ async function persistAfterFullSuccess(intent: LoginIntent): Promise<void> {
       >
         {{ t('Login') }}
       </button>
-      <button
-        type="button"
-        class="id-pass-form__game-start"
-        data-test="id-pass-game-start"
-        @click="handleGameStart"
-      >
-        {{ t('GameStart') }}
-      </button>
     </div>
 
     <div class="id-pass-form__login-methods">
@@ -660,10 +640,10 @@ async function persistAfterFullSuccess(intent: LoginIntent): Promise<void> {
   width: 40px;
   height: 40px;
   border-radius: 10px;
-  background: #f3f4f6;
+  background: var(--bf-bg-secondary);
   display: grid;
   place-items: center;
-  color: #374151;
+  color: var(--bf-text-secondary);
   margin-bottom: 0.5rem;
 }
 
@@ -674,13 +654,13 @@ async function persistAfterFullSuccess(intent: LoginIntent): Promise<void> {
 .id-pass-form__title {
   font-size: 1.25rem;
   font-weight: 500;
-  color: #111827;
+  color: var(--bf-text-primary);
   margin: 0;
 }
 
 .id-pass-form__subtitle {
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--bf-text-tertiary);
   margin: 0;
   font-weight: 400;
 }
@@ -694,7 +674,7 @@ async function persistAfterFullSuccess(intent: LoginIntent): Promise<void> {
 .id-pass-form__label {
   font-size: 0.8125rem;
   font-weight: 450;
-  color: #374151;
+  color: var(--bf-text-secondary);
 }
 
 .id-pass-form__account-wrap,
@@ -707,21 +687,21 @@ async function persistAfterFullSuccess(intent: LoginIntent): Promise<void> {
 .id-pass-form__input {
   width: 100%;
   padding: 0.5625rem 0.875rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--bf-border);
   border-radius: 8px;
   font-size: 0.9375rem;
-  background: #fff;
-  color: #111827;
+  background: var(--bf-bg-primary);
+  color: var(--bf-text-primary);
   outline: none;
   transition: border-color 150ms ease, box-shadow 150ms ease;
 }
 
 .id-pass-form__input:hover {
-  border-color: #d1d5db;
+  border-color: var(--bf-border-hover);
 }
 
 .id-pass-form__input:focus {
-  border-color: #6b7280;
+  border-color: var(--bf-border-active);
   box-shadow: 0 0 0 3px rgba(107, 114, 128, 0.1);
 }
 
@@ -738,7 +718,7 @@ async function persistAfterFullSuccess(intent: LoginIntent): Promise<void> {
   background: transparent;
   border: none;
   cursor: pointer;
-  color: #9ca3af;
+  color: var(--bf-text-disabled);
   border-radius: 6px;
   z-index: 1;
   transition: background 100ms ease, color 100ms ease;
@@ -751,8 +731,8 @@ async function persistAfterFullSuccess(intent: LoginIntent): Promise<void> {
 
 .id-pass-form__dropdown-btn:hover,
 .id-pass-form__toggle-btn:hover {
-  background: #f3f4f6;
-  color: #4b5563;
+  background: var(--bf-bg-secondary);
+  color: var(--bf-text-secondary);
 }
 
 .id-pass-form__dropdown {
@@ -764,8 +744,8 @@ async function persistAfterFullSuccess(intent: LoginIntent): Promise<void> {
   margin: 6px 0 0;
   padding: 4px 0;
   list-style: none;
-  background: #fff;
-  border: 1px solid #e5e7eb;
+  background: var(--bf-bg-primary);
+  border: 1px solid var(--bf-border);
   border-radius: 10px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   max-height: 200px;
@@ -780,17 +760,17 @@ async function persistAfterFullSuccess(intent: LoginIntent): Promise<void> {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #111827;
+  color: var(--bf-text-primary);
   font-weight: 400;
 }
 
 .id-pass-form__dropdown-item .material-symbols-outlined {
   font-size: 16px;
-  color: #9ca3af;
+  color: var(--bf-text-disabled);
 }
 
 .id-pass-form__dropdown-item:hover {
-  background: #f9fafb;
+  background: var(--bf-bg-secondary);
 }
 
 .id-pass-form__options {
@@ -810,7 +790,7 @@ async function persistAfterFullSuccess(intent: LoginIntent): Promise<void> {
   align-items: center;
   gap: 6px;
   font-size: 0.8125rem;
-  color: #374151;
+  color: var(--bf-text-secondary);
   font-weight: 400;
   cursor: pointer;
 }
@@ -820,7 +800,7 @@ async function persistAfterFullSuccess(intent: LoginIntent): Promise<void> {
   height: 14px;
   margin: 0;
   cursor: pointer;
-  accent-color: #111827;
+  accent-color: var(--bf-text-primary);
 }
 
 .id-pass-form__inline-links {
@@ -834,7 +814,7 @@ async function persistAfterFullSuccess(intent: LoginIntent): Promise<void> {
   padding: 0.25rem 0;
   border: 0;
   background: transparent;
-  color: #6b7280;
+  color: var(--bf-text-tertiary);
   font-size: 0.8125rem;
   font-weight: 400;
   cursor: pointer;
@@ -845,7 +825,7 @@ async function persistAfterFullSuccess(intent: LoginIntent): Promise<void> {
 
 .id-pass-form__inline-link:hover,
 .id-pass-form__inline-link:focus-visible {
-  color: #111827;
+  color: var(--bf-text-primary);
   outline: none;
 }
 
@@ -860,8 +840,8 @@ async function persistAfterFullSuccess(intent: LoginIntent): Promise<void> {
   width: 100%;
   font-weight: 500;
   padding: 0.6875rem 1rem;
-  background: #111827;
-  color: #fff;
+  background: var(--bf-text-primary);
+  color: var(--bf-text-inverse);
   border: none;
   border-radius: 8px;
   font-size: 0.9375rem;
@@ -870,7 +850,7 @@ async function persistAfterFullSuccess(intent: LoginIntent): Promise<void> {
 }
 
 .id-pass-form__submit:hover:not(:disabled) {
-  background: #374151;
+  background: var(--bf-text-secondary);
 }
 
 .id-pass-form__submit:disabled {
@@ -882,9 +862,9 @@ async function persistAfterFullSuccess(intent: LoginIntent): Promise<void> {
   width: 100%;
   font-weight: 500;
   padding: 0.6875rem 1rem;
-  background: #f3f4f6;
-  color: #111827;
-  border: 1px solid #e5e7eb;
+  background: var(--bf-bg-secondary);
+  color: var(--bf-text-primary);
+  border: 1px solid var(--bf-border);
   border-radius: 8px;
   font-size: 0.9375rem;
   cursor: pointer;
@@ -892,8 +872,8 @@ async function persistAfterFullSuccess(intent: LoginIntent): Promise<void> {
 }
 
 .id-pass-form__game-start:hover {
-  background: #e5e7eb;
-  border-color: #d1d5db;
+  background: var(--bf-bg-tertiary);
+  border-color: var(--bf-border-hover);
 }
 
 .id-pass-form__login-methods {
@@ -909,23 +889,23 @@ async function persistAfterFullSuccess(intent: LoginIntent): Promise<void> {
   justify-content: center;
   gap: 6px;
   padding: 0.625rem 0.5rem;
-  border: 1px solid #e5e7eb;
-  background: #fff;
+  border: 1px solid var(--bf-border);
+  background: var(--bf-bg-primary);
   border-radius: 8px;
   cursor: pointer;
-  color: #4b5563;
+  color: var(--bf-text-secondary);
   font-size: 0.8125rem;
   font-weight: 400;
   transition: all 150ms ease;
 }
 
 .id-pass-form__login-method:hover {
-  background: #f3f4f6;
-  border-color: #d1d5db;
+  background: var(--bf-bg-secondary);
+  border-color: var(--bf-border-hover);
 }
 
 .id-pass-form__login-method .material-symbols-outlined {
   font-size: 18px;
-  color: #6b7280;
+  color: var(--bf-text-tertiary);
 }
 </style>

@@ -83,11 +83,11 @@ function handleClose(): void {
   justify-content: space-between;
   height: 40px;
   padding: 0 0.375rem 0 1rem;
-  border-bottom: 1px solid #e5e5e5;
+  border-bottom: 1px solid var(--bf-border);
   user-select: none;
   cursor: default;
   flex-shrink: 0;
-  background: #ffffff;
+  background: var(--bf-bg-primary);
 }
 .bf-titlebar__left {
   display: flex;
@@ -97,12 +97,12 @@ function handleClose(): void {
 }
 .bf-titlebar__icon {
   font-size: 20px;
-  color: #666666;
+  color: var(--bf-text-secondary);
 }
 .bf-titlebar__title {
   font-size: 13px;
   font-weight: 600;
-  color: #000000;
+  color: var(--bf-text-primary);
 }
 .bf-titlebar__right {
   display: flex;
@@ -125,7 +125,7 @@ function handleClose(): void {
   place-items: center;
   border-radius: 6px;
   cursor: pointer;
-  color: #000000;
+  color: var(--bf-text-primary);
   transition: background 150ms ease;
   font: inherit;
   padding: 0;
@@ -134,10 +134,10 @@ function handleClose(): void {
   font-size: 18px;
 }
 .bf-titlebar__btn:hover {
-  background: #f5f5f5;
+  background: var(--bf-bg-secondary);
 }
 .bf-titlebar__btn--close:hover {
-  background: #ef4444;
-  color: #fff;
+  background: var(--bf-danger);
+  color: var(--bf-text-inverse);
 }
 </style>

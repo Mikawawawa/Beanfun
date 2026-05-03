@@ -1,0 +1,205 @@
+/**
+ * Vercel 风格主题变量
+ *
+ * 统一的色彩系统、圆角、阴影和动画规范
+ */
+
+:root {
+  /* ==================== 主色调 ==================== */
+  --v-color-primary: #000000;
+  --v-color-primary-hover: #333333;
+  --v-color-primary-light: rgba(0, 0, 0, 0.08);
+  --v-color-primary-lighter: rgba(0, 0, 0, 0.04);
+
+  /* ==================== 背景色 ==================== */
+  --v-bg-primary: #ffffff;
+  --v-bg-secondary: #fafafa;
+  --v-bg-tertiary: #f5f5f5;
+  --v-bg-hover: #f3f4f6;
+
+  /* ==================== 边框色 ==================== */
+  --v-border-primary: #eaeaea;
+  --v-border-secondary: #d1d5db;
+  --v-border-hover: #000000;
+  --v-border-dashed: #e5e7eb;
+
+  /* ==================== 文字色 ==================== */
+  --v-text-primary: #111827;
+  --v-text-secondary: #333333;
+  --v-text-tertiary: #666666;
+  --v-text-muted: #999999;
+  --v-text-placeholder: #9ca3af;
+
+  /* ==================== 功能色 ==================== */
+  --v-success: #22c55e;
+  --v-success-light: #dcfce7;
+  --v-warning: #f59e0b;
+  --v-warning-light: #fef3c7;
+  --v-error: #ef4444;
+  --v-error-light: #fee2e2;
+  --v-info: #3b82f6;
+  --v-info-light: #dbeafe;
+
+  /* ==================== 圆角 ==================== */
+  --v-radius-sm: 4px;
+  --v-radius-md: 6px;
+  --v-radius-lg: 8px;
+  --v-radius-xl: 12px;
+  --v-radius-full: 9999px;
+
+  /* ==================== 阴影 ==================== */
+  --v-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --v-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --v-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --v-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.4);
+
+  /* ==================== 动画 ==================== */
+  --v-transition-fast: 150ms ease;
+  --v-transition-normal: 200ms ease;
+  --v-transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ==================== 字体 ==================== */
+  --v-font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --v-font-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+
+  /* ==================== 间距 ==================== */
+  --v-space-xs: 0.25rem;
+  --v-space-sm: 0.5rem;
+  --v-space-md: 1rem;
+  --v-space-lg: 1.5rem;
+  --v-space-xl: 2rem;
+  --v-space-2xl: 3rem;
+}
+
+/* ==================== 通用工具类 ==================== */
+
+/* 按钮基础样式 */
+.v-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--v-space-sm);
+  font-family: var(--v-font-sans);
+  font-weight: 500;
+  border-radius: var(--v-radius-md);
+  cursor: pointer;
+  transition: all var(--v-transition-normal);
+  border: none;
+  outline: none;
+}
+
+.v-btn--primary {
+  background: var(--v-color-primary);
+  color: var(--v-bg-primary);
+}
+
+.v-btn--primary:hover:not(:disabled) {
+  background: var(--v-color-primary-hover);
+}
+
+.v-btn--secondary {
+  background: var(--v-bg-primary);
+  color: var(--v-text-secondary);
+  border: 1px solid var(--v-border-primary);
+}
+
+.v-btn--secondary:hover:not(:disabled) {
+  border-color: var(--v-border-hover);
+}
+
+.v-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.v-btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+/* 卡片基础样式 */
+.v-card {
+  background: var(--v-bg-primary);
+  border: 1px solid var(--v-border-primary);
+  border-radius: var(--v-radius-lg);
+  transition: all var(--v-transition-normal);
+}
+
+.v-card:hover {
+  border-color: var(--v-border-secondary);
+  box-shadow: var(--v-shadow-sm);
+}
+
+/* 输入框基础样式 */
+.v-input {
+  padding: 0.625rem 0.875rem;
+  background: var(--v-bg-primary);
+  border: 1px solid var(--v-border-primary);
+  border-radius: var(--v-radius-md);
+  font-family: var(--v-font-sans);
+  font-size: 0.875rem;
+  color: var(--v-text-primary);
+  transition: all var(--v-transition-normal);
+  outline: none;
+}
+
+.v-input:focus {
+  border-color: var(--v-color-primary);
+  box-shadow: 0 0 0 3px var(--v-color-primary-light);
+}
+
+.v-input::placeholder {
+  color: var(--v-text-placeholder);
+}
+
+/* 空状态基础样式 */
+.v-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--v-space-md);
+  padding: var(--v-space-2xl);
+  background: var(--v-bg-secondary);
+  border: 1px dashed var(--v-border-primary);
+  border-radius: var(--v-radius-lg);
+  text-align: center;
+}
+
+/* 动画关键帧 */
+@keyframes v-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes v-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes v-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes v-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

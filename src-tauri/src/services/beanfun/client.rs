@@ -407,6 +407,46 @@ impl BeanfunClient {
         Ok(())
     }
 
+    /// Inject a session token into the cookie jar.
+    ///
+    /// This is used when restoring a saved session from disk. The token
+    /// is inserted as a `bfWebToken` cookie for the portal domain so
+    /// subsequent requests are authenticated.
+    ///
+    /// # Arguments
+    ///
+    /// * `token` — The `bfWebToken` value (e.g., "A1B2C3D4E5F6...").
+    ///
+    /// # Errors
+    ///
+    /// Returns [`LoginError::InvalidUrl`] if the portal base URL cannot
+    /// be parsed as a cookie domain.
+    pub fn inject_session_token(&self, token: &str) -> Result<(), LoginError> {
+        use reqwest_cookie_store::RawCookie;
+
+        // Build the cookie domain from portal_base.
+        let portal_url = self.config.endpoints.portal_base.clone();
+        let domain = portal_url
+            .host_str()
+            .ok_or_else(|| LoginError::InvalidUrl("portal_base has no host".to_string()))?;
+
+        // Create the bfWebToken cookie by parsing the string form.
+        // This ensures the cookie is properly formatted for insertion.
+        let cookie_str = format!("bfWebToken={}; Domain={}; Path=/; Secure", token, domain);
+        let cookie = RawCookie::parse(cookie_str)
+            .map_err(|e| LoginError::InvalidUrl(format!("Failed to parse cookie: {e}")))?
+            .into_owned();
+
+        // Insert into the cookie store using store_response_cookies,
+        // which is the same method used by inject_webview_cookies.
+        let mut store = self.cookie_store.lock().map_err(|_| {
+            LoginError::InvalidUrl("Cookie store lock poisoned".to_string())
+        })?;
+        store.store_response_cookies(std::iter::once(cookie), &portal_url);
+
+        Ok(())
+    }
+
     /// Read `resp`'s body as UTF-8, capping the accumulated bytes at
     /// [`ClientConfig::max_body_size`].
     ///
